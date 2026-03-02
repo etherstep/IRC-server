@@ -41,6 +41,10 @@ RESET			:= $(shell tput sgr0)
 
 SRCS_MAIN := \
 	main.cpp \
+	a.cpp \
+	b.cpp \
+	c.cpp \
+	d.cpp \
 
 # Combine all source files
 SRCS := \
@@ -52,10 +56,34 @@ SRCS := \
 OBJS				:= $(addprefix $(OBJ_DIR)/,$(SRCS:.cpp=.o))
 TOTAL_SRCS			:= $(words $(SRCS))
 
+define PROGRESS
+	IDX=$$(( $$(cat $(LOCK_FILE) 2>/dev/null || echo 0) + 1 )); \
+	echo $$IDX > $(LOCK_FILE); \
+	PCT=$$((IDX * 100 / $(TOTAL_SRCS))); \
+	BAR_FILLED=$$((IDX * 20 / $(TOTAL_SRCS))); \
+	BAR_EMPTY=$$((20 - BAR_FILLED)); \
+	FILLED_BODY=$$((BAR_FILLED > 1 ? BAR_FILLED - 1 : 0)); \
+	FILLED=""; for ((i=0; i<FILLED_BODY; i++)); do FILLED+="━"; done; \
+	EMPTY="";  for ((i=0; i<BAR_EMPTY;  i++)); do EMPTY+="─";  done; \
+	if   [ $$BAR_FILLED -eq 20 ]; then EDGE="━"; \
+	elif [ $$BAR_FILLED -gt 0 ];  then EDGE="╸"; \
+	else EDGE=""; fi; \
+	if   [ $$PCT -lt 40 ]; then COLOR="\033[38;5;22m"; \
+	elif [ $$PCT -lt 70 ]; then COLOR="\033[38;5;34m"; \
+	elif [ $$PCT -lt 90 ]; then COLOR="\033[38;5;40m"; \
+	else                        COLOR="\033[38;5;46m"; fi; \
+	if [ $$PCT -eq 100 ]; then SPIN="✓"; \
+	else \
+		FRAMES=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏); \
+		SPIN=$${FRAMES[$$((IDX % 10))]}; \
+	fi; \
+	printf "\r$$SPIN $$COLOR$$FILLED$$EDGE$$EMPTY\033[0m %3d%% %-30s" $$PCT "$<"
+endef
+
 # ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ BUILD TARGETS ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ #
 
 # Default target
-all: $(NAME)
+all: _reset_progress $(NAME) 
 	@if [ ! -f $(OBJ_DIR)/.built ]; then \
 		echo ">$(BOLD)$(YELLOW) $(NAME) is already up to date.$(RESET)"; \
 	else \
@@ -65,22 +93,21 @@ all: $(NAME)
 
 # Main executable linking with dependency checking
 $(NAME): $(OBJS)
+	@printf "\n"
 	@echo ">$(BOLD)$(GREEN) Linking $(NAME)...$(RESET)"
 	@$(CXX) $(CXXFLAGS) -o $(NAME) $(OBJS)
 	@touch $(OBJ_DIR)/.built
 	@echo ">$(BOLD)$(GREEN) $(NAME) successfully linked!$(RESET)"
 
 
-PROGRESS_FILE := $(OBJ_DIR)/.progress
-# Individual object file compilation with progress tracking
+LOCK_FILE     := $(OBJ_DIR)/.build.lock
+
+.PHONY: _reset_progress
+_reset_progress:
+	@rm -f $(LOCK_FILE)
+
 $(OBJ_DIR)/%.o: %.cpp | $(OBJ_DIR) $(DEP_DIR)
-	@if [ -f $(PROGRESS_FILE) ]; then \
-		CURRENT=$$(cat $(PROGRESS_FILE)); \
-		NEXT=$$((CURRENT + 1)); \
-		echo "$$NEXT" > $(PROGRESS_FILE); \
-		printf "> [%3d%%] $(CYAN)(%d/%d files) Compiling $<... $(RESET)\n" \
-			$$((NEXT*100/$(TOTAL_SRCS))) $$((NEXT)) $(TOTAL_SRCS); \
-	fi
+	@( flock 9; $(PROGRESS) ) 9<>$(LOCK_FILE)
 	@$(CXX) $(CXXFLAGS) $(DEPFLAGS) -c $< -o $@ $(INC)
 
 # ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ ADDITIONAL TARGETS ■■■■■■■■■■■■■■■■■■■■■■■■■■ #
@@ -88,7 +115,6 @@ $(OBJ_DIR)/%.o: %.cpp | $(OBJ_DIR) $(DEP_DIR)
 # Directory creation and dependency management
 $(OBJ_DIR):
 	@mkdir -p $(OBJ_DIR)
-	@echo "0" > $(PROGRESS_FILE)
 
 # Include auto-generated dependency files
 -include $(wildcard $(DEP_DIR)/*.d)
@@ -136,5 +162,4 @@ re:
 	@$(MAKE) all
 
 # ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ TARGET DECLARATIONS ■■■■■■■■■■■■■■■■■■■■■■■■■ #
-
 .PHONY: all debug clean fclean re
