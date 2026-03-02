@@ -52,6 +52,10 @@ SRCS := \
 OBJS				:= $(addprefix $(OBJ_DIR)/,$(SRCS:.cpp=.o))
 TOTAL_SRCS			:= $(words $(SRCS))
 
+SHELL := /bin/bash
+
+SHELL := /bin/bash
+
 define PROGRESS
 	IDX=$$(( $$(cat $(LOCK_FILE) 2>/dev/null || echo 0) + 1 )); \
 	echo $$IDX > $(LOCK_FILE); \
@@ -70,8 +74,10 @@ define PROGRESS
 	else                        COLOR="\033[38;5;46m"; fi; \
 	if [ $$PCT -eq 100 ]; then SPIN="✓"; \
 	else \
-		FRAMES=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏); \
-		SPIN=$${FRAMES[$$((IDX % 10))]}; \
+		case $$((IDX % 10)) in \
+			0) SPIN="⠋";; 1) SPIN="⠙";; 2) SPIN="⠹";; 3) SPIN="⠸";; 4) SPIN="⠼";; \
+			5) SPIN="⠴";; 6) SPIN="⠦";; 7) SPIN="⠧";; 8) SPIN="⠇";; 9) SPIN="⠏";; \
+		esac; \
 	fi; \
 	printf "\r$$SPIN $$COLOR$$FILLED$$EDGE$$EMPTY\033[0m %3d%% %-30s" $$PCT "$<"
 endef
