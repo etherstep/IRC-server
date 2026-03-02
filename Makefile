@@ -41,10 +41,6 @@ RESET			:= $(shell tput sgr0)
 
 SRCS_MAIN := \
 	main.cpp \
-	a.cpp \
-	b.cpp \
-	c.cpp \
-	d.cpp \
 
 # Combine all source files
 SRCS := \
