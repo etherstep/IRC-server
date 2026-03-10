@@ -1,5 +1,2 @@
 # IRC
 
-test
-test
-test
