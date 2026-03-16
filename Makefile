@@ -85,6 +85,7 @@ endef
 
 # ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ BUILD TARGETS ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ #
 
+.PHONY: all debug clean fclean re
 # Default target
 all: _reset_progress $(NAME) 
 	@if [ ! -f $(OBJ_DIR)/.built ]; then \
@@ -160,6 +161,3 @@ re:
 	@echo "> [ $(NAME) ] $(BOLD)$(WHITE) Rebuilding from scratch...$(RESET)"
 	@$(MAKE) fclean
 	@$(MAKE) all
-
-# ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ TARGET DECLARATIONS ■■■■■■■■■■■■■■■■■■■■■■■■■ #
-.PHONY: all debug clean fclean re
