@@ -9,6 +9,9 @@
 int main() {
 	std::cout << "hello world\n";
 	return 0;
+
+#include "irc.hpp"
+
 // Connect to UNIX-domain stream socket
 // nc -U /tmp/testsocket
 // irssi
