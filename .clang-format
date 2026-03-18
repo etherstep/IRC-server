@@ -1,0 +1,12 @@
+BasedOnStyle: Google
+ReferenceAlignment: Right
+PointerAlignment: Right
+AlignConsecutiveDeclarations: true
+AllowShortBlocksOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+IndentAccessModifiers: true
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
