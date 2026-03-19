@@ -69,7 +69,12 @@ SRCS		:= \
 
 # Derived build variables
 OBJS				:= $(addprefix $(OBJ_DIR)/,$(SRCS:.cpp=.o))
-TOTAL_SRCS			:= $(words $(SRCS))
+STALE_SRCS			:= $(shell \
+	for src in $(SRCS); do \
+		obj="$(OBJ_DIR)/$${src%.cpp}.o"; \
+		[ ! -f "$$obj" ] || [ "$(SRC_DIR)/$$src" -nt "$$obj" ] && echo "$$src"; \
+	done)
+TOTAL_SRCS			:= $(if $(STALE_SRCS),$(words $(STALE_SRCS)),1)
 LOCK_FILE			:= $(OBJ_DIR)/.build.lock
 PROGRESS_SENTINEL	:= $(OBJ_DIR)/.progress_reset
 
