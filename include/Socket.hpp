@@ -26,14 +26,14 @@ class Socket {
      * @param int32_t port to listen on
      * @return Socket object
      */
-    Socket *makeListeningSocket(int32_t port);
+    static Socket *makeListeningSocket(int32_t port);
     /**
      * @brief Wrap a give file descriptor in a Socket object
      *
      * @param int32_t clientFD fd received from accept()
      * @return Socket object
      */
-    Socket *makeClientSocket(int32_t clientFD);
+    static Socket *makeClientSocket(int32_t clientFD);
     /**
      * @brief make the give fd nonblocking with fcntl
      *
