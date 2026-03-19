@@ -1,5 +1,3 @@
-#include <exception>
-
 #include "Server.hpp"
 #include "irc.hpp"
 

@@ -21,8 +21,8 @@ Socket *Socket::makeListeningSocket(int32_t port) {
   if (listenerFD == -1) {
     LOG << "Error creating listener socket";
     return nullptr;
+    makeNonBlocking(listenerFD);
   }
-  makeNonBlocking(listenerFD);
 
   int32_t option = 1;
   if (setsockopt(listenerFD, SOL_SOCKET, SO_REUSEADDR, &option,

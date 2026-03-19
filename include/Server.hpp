@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+#include "Socket.hpp"
+
 #define BACKLOG_SIZE 1024
 #define RCVBUF_SIZE 65536
 #define SNDBUF_SIZE 65536
@@ -19,25 +21,21 @@
 class Server {
   private:
     // Listening
-    int32_t            _port;
-    int32_t            _listenSock = -1;
-    uint32_t           _backlogSize;
-    struct sockaddr_in _address{};
-    socklen_t          _addressLen;
+    Socket  *_listenSocket = nullptr;
+    int32_t  _port;
+    uint32_t _backlogSize;
 
     // Polling
-    struct epoll_event  _ev{};
-    struct epoll_event *_events{};
-    int32_t             _epollfd = -1;
-    int32_t             _nfds;
+    struct epoll_event  _epoll{};
+    struct epoll_event *epollEvents{};
+    int32_t             _epollFD = -1;
+    int32_t             _nEpollFDs;
 
     // Clients
-    std::vector<int32_t> _clients;
+    std::vector<Socket *> _clients;
 
     // Security
     const std::string _pwd;
-
-    int32_t setNonBlocking(int fd);
 
   public:
     Server(void) = delete;
