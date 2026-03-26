@@ -91,6 +91,9 @@ GIT_COMMIT_COUNT	:= $(shell git rev-list --count HEAD)
 GIT_DATE        	:= $(shell git show -s --format="%cd" \
 						--date=format:"%Y-%m-%d %H:%M" HEAD)
 
+# Injects a fingerprint macro at build time, so program can log current build
+CXXFLAGS += -DGIT_HASH=\"$(GIT_HASH)\"
+
 SHELL	:= /bin/bash
 
 # Displays an animated progress bar with spinner, percentage,

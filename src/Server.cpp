@@ -29,7 +29,7 @@ void Server::start(void) {
   _epoll.data.fd = _listenSocket->getFD();
   if (epoll_ctl(_epollFD, EPOLL_CTL_ADD, _listenSocket->getFD(), &_epoll) < 0)
     throw std::runtime_error("Failed to start polling on listening socket");
-
+  LOG << "Starting server, build: " << GIT_HASH;
   epollEvents = new struct epoll_event[_backlogSize];
 }
 
