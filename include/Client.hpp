@@ -30,23 +30,35 @@ class Client {
     std::string_view extractMessage();
 
     void eraseMessage();
-    bool isRegistered();
 
     std::string getNickname();
-    State       getState();
+    void        setNickname(std::string const &nick);
 
-    void setNickname(std::string const &nick);
+    State getState();
+    void  setState(State s);
+
+    std::string getName();
+    void        setName(std::string const &name);
+
+    bool isRegistered();
 
     void        fakeAppendToBuffer(std::string const &input);
-    std::string fakeOutgoingBuffer();
-    bool        hasMessage();
-    bool        isOpen();
+    void        appendToOutgoing(std::string const &msg);
+    std::string getOutgoingBuffer();
+
+    void setPasswordOK(bool b);
+    bool isPasswordOK();
+
+    bool hasMessage();
+    bool isOpen();
 
   private:
     Socket     *_socket;
     std::string _socketBuffer;
+    std::string _outBuffer;
     bool        _hasMessage;
     bool        _isOpen;
+    bool        _passwordOK;
     State       _state;
     std::string _nick;
     std::string _name;

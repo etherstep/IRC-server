@@ -1,10 +1,17 @@
 #include "Server.hpp"
 
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
+#include <string>
 
+#include "Client.hpp"
 #include "Logger.hpp"
 #include "Parser.hpp"
+#include "Utils.hpp"
+
+#define SERVER_NAME "usvaIRC"
 
 Server::Server(const int32_t port, const uint32_t backlogSize,
                const std::string &pwd)
@@ -84,23 +91,92 @@ bool Server::passwordIsCorrect(const std::string &pwd) {
 }
 
 void Server::handlePassword(Client *client, const Command &cmd) {
-  (void)client;
   LOG << "handling PASS command";
-  if (!cmd.params.empty() && passwordIsCorrect(cmd.params[0])) {
+  if (!client->isRegistered()) {
+    replyMessage(client, Numeric::ERR_ALREADYREGISTRED,
+                 ":Unauthorized command (already registered)");
+    return;
+  }
+
+  if (cmd.params.empty()) {
+    replyMessage(client, Numeric::ERR_NEEDMOREPARAMS,
+                 "PASS :Not enough parameters");
+    return;
+  }
+
+  if (passwordIsCorrect(cmd.params[0])) {
     LOG << "Password matches";
-    // addClient(client);
-  } else
+    client->setPasswordOK(true);
+  } else {
     LOG << "Password doesn't match";
+    replyMessage(client, Numeric::ERR_PASSWDMISMATCH, ":Incorrect password");
+  }
 }
 
 void Server::handleNickname(Client *client, const Command &cmd) {
-  (void)client, (void)cmd;
   LOG << "handling NICK command";
+  if (!client->isPasswordOK()) {
+    replyMessage(client, Numeric::ERR_PASSWDMISMATCH, ":Incorrect password");
+    return;
+  }
+
+  if (cmd.params.empty()) {
+    replyMessage(client, Numeric::ERR_NONICKNAMEGIVEN, ":No nickname given");
+    return;
+  }
+
+  if (client->isRegistered() ||
+      client->getState() == Client::State::NICK_RECEIVED) {
+    replyMessage(client, Numeric::ERR_ALREADYREGISTRED,
+                 ":Unauthorized command (already registered)");
+    return;
+  }
+
+  if (Utils::validateNickname(cmd.params[0])) {
+    if (isNicknameInUse(cmd.params[0])) {
+      replyMessage(client, Numeric::ERR_NICKNAMEINUSE,
+                   ":Nickname already in use");
+      return;
+    } else {
+      client->setNickname(cmd.params[0]);
+      client->setState(Client::State::NICK_RECEIVED);
+      if (client->isRegistered()) {
+        sendWelcomeMessages(client);
+      }
+    }
+  } else {
+    replyMessage(client, Numeric::ERR_ERRONEUSNICKNAME, ":Erroneous nickname");
+    return;
+  }
 }
 
 void Server::handleUserJoin(Client *client, const Command &cmd) {
-  (void)client, (void)cmd;
-  LOG << "handling NICK command";
+  LOG << "handling USER command";
+  if (!client->isPasswordOK()) {
+    replyMessage(client, Numeric::ERR_PASSWDMISMATCH, ":Incorrect password");
+    return;
+  }
+
+  if (client->isRegistered() ||
+      client->getState() == Client::State::USER_RECEIVED) {
+    replyMessage(client, Numeric::ERR_ALREADYREGISTRED,
+                 ":Unauthorized command (already registered)");
+    return;
+  }
+
+  if (cmd.params.empty() || cmd.params.size() != 4) {
+    replyMessage(client, Numeric::ERR_NEEDMOREPARAMS,
+                 "USER :Incorrect parameter count");
+    return;
+  }
+
+  if (Utils::validateNickname(cmd.params[0])) {
+    client->setName(cmd.params[0]);
+    client->setState(Client::State::USER_RECEIVED);
+    if (client->isRegistered()) {
+      sendWelcomeMessages(client);
+    }
+  }
 }
 
 void Server::processMessage(Client *client) {
@@ -112,9 +188,12 @@ void Server::processMessage(Client *client) {
     if (it != _functionMap.end()) {
       auto handler = it->second;
       (this->*handler)(client, *cmd);
+    } else {
+      replyMessage(client, Numeric::ERR_UNKNOWNCOMMAND,
+                   cmd->command + " :command not known");
     }
   } else {
-    replyUnknown(client);
+    LOG << "Malformed message received from " << client->getNickname();
   }
 }
 
@@ -125,4 +204,24 @@ Server::~Server(void) {
     delete[] epollEvents;
 }
 
-void Server::replyUnknown(int code) {}
+void Server::replyMessage(Client *client, int code, std::string const &msg) {
+  std::ostringstream message;
+
+  message << ":" << SERVER_NAME << " ";
+  message << std::setw(3) << std::setfill('0') << code << " ";
+  std::string target = client->getNickname();
+  if (target.empty() || !client->isRegistered())
+    target = "*";
+  message << target << " ";
+  message << msg << " \r\n";
+  client->appendToOutgoing(message.str());
+}
+
+bool Server::isNicknameInUse(std::string const &nick) {
+  for (auto client : _clients) {
+    if (client->getNickname().compare(nick) == 0) {
+      return true;
+    }
+  }
+  return false;
+}

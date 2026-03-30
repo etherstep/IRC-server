@@ -47,7 +47,11 @@ class Server {
          {"NICK", &Server::handleNickname},
          {"USER", &Server::handleUserJoin}};
 
-    void replyUnknown(int code);
+    // formulate responses
+    void replyMessage(Client *client, int code, std::string const &msg);
+    void sendWelcomeMessages(Client *client);
+
+    bool isNicknameInUse(std::string const &nick);
 
     // Security
     const std::string _pwd;

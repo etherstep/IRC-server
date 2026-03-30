@@ -14,8 +14,10 @@
 Client::Client(Socket *soc)
     : _socket(soc),
       _socketBuffer(""),
+      _outBuffer(""),
       _hasMessage(false),
       _isOpen(true),
+      _passwordOK(false),
       _state(State::CONNECTED) {};
 
 Client::~Client() {
@@ -29,6 +31,14 @@ bool Client::checkBuffer() {
 
 void Client::fakeAppendToBuffer(std::string const &input) {
   _socketBuffer.append(input);
+}
+
+void Client::appendToOutgoing(std::string const &msg) {
+  _outBuffer.append(msg);
+}
+
+std::string Client::getOutgoingBuffer() {
+  return _outBuffer;
 }
 
 void Client::eraseMessage() {
@@ -69,4 +79,25 @@ bool Client::hasMessage() {
 
 bool Client::isOpen() {
   return _isOpen;
+}
+
+bool Client::isRegistered() {
+  return _state == State::REGISTERED;
+}
+
+bool Client::isPasswordOK() {
+  return _passwordOK;
+}
+
+void Client::setState(State s) {
+  if (_state == State::REGISTERED)
+    return;
+  if (s == State::NICK_RECEIVED) {
+    (_state == State::USER_RECEIVED) ? _state = State::REGISTERED
+                                     : _state = State::NICK_RECEIVED;
+  }
+  if (s == State::USER_RECEIVED) {
+    (_state == State::NICK_RECEIVED) ? _state = State::REGISTERED
+                                     : _state = State::USER_RECEIVED;
+  }
 }
