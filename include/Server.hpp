@@ -94,7 +94,7 @@ class Server {
     /**
      * @brief Returns a reference to the vector of client side FD's
      */
-    std::vector<int32_t> &getClients(void) const;
+    // std::vector<int32_t> &getClients(void) const;
 
     /**
      * @brief Starts the server and initializes _epollfd. Starts polling on the
