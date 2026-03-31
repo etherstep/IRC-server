@@ -13,11 +13,10 @@
 
 Client::Client(Socket *soc)
     : _socket(soc),
-      _socketBuffer(""),
-      _outBuffer(""),
-      _hasMessage(false),
-      _isOpen(true),
+      _responseBuffer(""),
+      _recvBuffer(""),
       _passwordOK(false),
+      _shouldClose(false),
       _state(State::CONNECTED) {};
 
 Client::~Client() {
@@ -26,36 +25,36 @@ Client::~Client() {
 };
 
 bool Client::checkBuffer() {
-  return false;
+  bool response = _recvBuffer.find("\r\n") != std::string::npos;
+  return response;
 }
 
-void Client::fakeAppendToBuffer(std::string const &input) {
-  _socketBuffer.append(input);
+void Client::appendToRecvBuffer(std::string const &input) {
+  _recvBuffer.append(input);
 }
 
-void Client::appendToOutgoing(std::string const &msg) {
-  _outBuffer.append(msg);
+void Client::appendToResponseBuffer(std::string const &msg) {
+  _responseBuffer.append(msg);
 }
 
-std::string Client::getOutgoingBuffer() {
-  return _outBuffer;
+std::string Client::getResponseBuffer() {
+  return _responseBuffer;
 }
 
 void Client::eraseMessage() {
-  auto end = _socketBuffer.find("\r\n");
+  auto end = _recvBuffer.find("\r\n");
   if (end != std::string::npos)
-    _socketBuffer.erase(end + 2);
+    _recvBuffer.erase(end + 2);
 }
 
 void Client::readSocket() {
   char    buffer[RCVBUF_SIZE] = {};
   ssize_t bytesRead = _socket->receiveData(buffer, RCVBUF_SIZE);
   if (bytesRead > 0) {
-    _socketBuffer.append(buffer, bytesRead);
-    _hasMessage = checkBuffer();
+    _recvBuffer.append(buffer, bytesRead);
   } else if (bytesRead == 0) {
     LOG << "Socket closing, fd: " << _socket->getFD();
-    _isOpen = false;
+    _shouldClose = true;
   } else {
     if (!(errno == EAGAIN || errno == EWOULDBLOCK)) {
       throw std::runtime_error("Error reading socket");
@@ -64,25 +63,25 @@ void Client::readSocket() {
 }
 
 std::string_view Client::extractMessage() {
-  auto stoppingPoint = _socketBuffer.find("\r\n");
+  auto stoppingPoint = _recvBuffer.find("\r\n");
   if (stoppingPoint != std::string::npos) {
-    std::string_view msg(_socketBuffer.data(), stoppingPoint + 2);
+    std::string_view msg(_recvBuffer.data(), stoppingPoint + 2);
     return msg;
   } else {
     return "";
   }
 }
 
-bool Client::hasMessage() {
-  return _hasMessage;
-}
-
-bool Client::isOpen() {
-  return _isOpen;
+bool Client::shouldClose() {
+  return _shouldClose;
 }
 
 bool Client::isRegistered() {
   return _state == State::REGISTERED;
+}
+
+void Client::setPasswordOK(bool b) {
+  _passwordOK = b;
 }
 
 bool Client::isPasswordOK() {
@@ -102,18 +101,30 @@ void Client::setState(State s) {
   }
 }
 
-std::string Client::getUserName() {
-  return _userName;
+Client::State Client::getState() {
+  return _state;
 }
 
-void Client::setUserName(std::string const &name) {
-  _userName = name;
+std::string Client::getNickname() {
+  return _nick;
 }
 
-std::string Client::getRealName() {
-  return _realName;
+void Client::setNickname(std::string const &name) {
+  _nick = name;
 }
 
-void Client::setRealName(std::string const &name) {
-  _realName = name;
+std::string Client::getUsername() {
+  return _username;
+}
+
+void Client::setUsername(std::string const &name) {
+  _username = name;
+}
+
+std::string Client::getRealname() {
+  return _realname;
+}
+
+void Client::setRealname(std::string const &name) {
+  _realname = name;
 }

@@ -12,6 +12,10 @@
 #include "Utils.hpp"
 
 #define SERVER_NAME "usvaIRC"
+#include <cstring>
+
+#include "Client.hpp"
+#include "Logger.hpp"
 
 Server::Server(const int32_t port, const uint32_t backlogSize,
                const std::string &pwd)
@@ -40,7 +44,7 @@ void Server::start(void) {
   _epoll.data.fd = _listenSocket->getFD();
   if (epoll_ctl(_epollFD, EPOLL_CTL_ADD, _listenSocket->getFD(), &_epoll) < 0)
     throw std::runtime_error("Failed to start polling on listening socket");
-  epollEvents = new struct epoll_event[_backlogSize];
+  _epollEvents = new struct epoll_event[_backlogSize];
 }
 
 // FIXME: Should we store client IP and port to a struct inside Socket *
@@ -52,35 +56,84 @@ void Server::start(void) {
 // FIXME: What to do if adding clientSocket->getFD to polling fails?
 // FIXME: What to do if accept() fails?
 void Server::run(void) {
-  char buffer[1024] = {'p', 'i', 'n', 'g', '\r', '\n'};
+  char buffer[2048];
   while (true) {
-    std::cout << "Polling for new connections. Clients: ";
-    std::cout << _clients.size() << std::endl;
-    _nEpollFDs = epoll_wait(_epollFD, epollEvents, _backlogSize, 1000);
+    LOG << "Polling for new connections. Clients: ";
+    LOG << _clientData.size();
+    _nEpollFDs = epoll_wait(_epollFD, _epollEvents, _backlogSize, POLL_TIME);
     for (int i = 0; i < _nEpollFDs; ++i) {
-      if (epollEvents[i].data.fd == _listenSocket->getFD()) {
+      // check for disconnected clients and remove them from the map
+      if (_epollEvents[i].events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) {
+        removeClient(_epollEvents[i].data.fd);
+        close(_epollEvents[i].data.fd);
+        continue;
+      }
+
+      if (_epollEvents[i].data.fd == _listenSocket->getFD()) {
         int32_t clientFD = accept(_listenSocket->getFD(), NULL, NULL);
         if (clientFD < 0) {
           std::cerr << "Failed to accept connection to client\n";
           continue;
         }
-        Socket *clientSocket = Socket::makeClientSocket(clientFD);
 
-        struct epoll_event connectionPoll;
-        connectionPoll.events = EPOLLIN;
+        Socket *clientSocket = Socket::makeClientSocket(clientFD);
+        addClient(clientFD, clientSocket);
+
+        struct epoll_event connectionPoll{};
+        connectionPoll.events = EPOLLIN | EPOLLHUP | EPOLLRDHUP | EPOLLERR;
         connectionPoll.data.fd = clientSocket->getFD();
         if (epoll_ctl(_epollFD, EPOLL_CTL_ADD, clientSocket->getFD(),
                       &connectionPoll) < 0) {
-          std::cerr << "Failed to add connectiont to polling list\n";
+          std::cerr << "Failed to add connection to polling list\n";
           continue;
         }
-        Client *connection = new Client(clientSocket);
-        _clients.push_back(connection);
-        _ClientMap[clientFD] = connection;
+
       } else {
-        _ClientMap[epollEvents[i].data.fd]->readSocket();
-        if (_ClientMap[epollEvents[i].data.fd]->hasMessage())
-          send(epollEvents[i].data.fd, buffer, 5, 0);
+        memset(buffer, 0, sizeof(buffer));
+
+        ssize_t received =
+            recv(_epollEvents[i].data.fd, buffer, sizeof(buffer), MSG_DONTWAIT);
+        if (received <= 0) {
+          std::cerr << "failed to receive\n";
+          continue;
+        }
+
+        std::cout << "bytes: " << received << std::endl;
+        std::cout << "message: --<" << buffer << ">--" << '\n';
+        LOG << "client: " << buffer;
+
+        Client *clientData = getClient(_epollEvents[i].data.fd);
+        if (!clientData)
+          continue;
+
+        const std::string &buf = buffer;
+        if (buf.find("CAP LS") != std::string::npos) {
+          std::string response = ":usva CAP * LS :none\r\n";
+          send(_epollEvents[i].data.fd, response.c_str(), response.length(), 0);
+          LOG << "server: " << response;
+        }
+        if (buf.find("JOIN") != std::string::npos) {
+          // check_user_permissions_to_channel();
+          std::string response = "JOIN :usva #a :topic" +
+                                 clientData->getNickname() + "#a" + "\r\n";
+          send(_epollEvents[i].data.fd, response.c_str(), response.length(), 0);
+          LOG << "server: " << response;
+        }
+        if (buf.find("CAP END") != std::string::npos) {
+          std::string response = "001 " + clientData->getNickname() +
+                                 " :Welcome to the IRC " +
+                                 clientData->getNickname() + "\r\n";
+          send(_epollEvents[i].data.fd, response.c_str(), response.length(), 0);
+          LOG << "server: " << response;
+        }
+        if (buf.find("QUIT") != std::string::npos) {
+          std::string response = "ERROR :Lost terminal\r\n";
+          send(_epollEvents[i].data.fd, response.c_str(), response.length(), 0);
+          LOG << "server: " << response;
+
+          removeClient(_epollEvents[i].data.fd);
+          close(_epollEvents[i].data.fd);
+        }
       }
     }
   }
@@ -90,6 +143,20 @@ bool Server::passwordIsCorrect(const std::string &pwd) {
   return (_pwd.compare(pwd) == 0);
 }
 
+void Server::addClient(int fd, Socket *soc) {
+  _clientData.try_emplace(fd, Client(soc));
+}
+
+void Server::removeClient(int fd) {
+  _clientData.erase(fd);
+}
+
+Client *Server::getClient(int fd) {
+  auto it = _clientData.find(fd);
+  if (it == _clientData.end())
+    return nullptr;
+  return &it->second;
+}
 void Server::handlePassword(Client *client, const Command &cmd) {
   LOG << "handling PASS command";
   if (!client->isRegistered()) {
@@ -177,12 +244,20 @@ void Server::handleUserJoin(Client *client, const Command &cmd) {
     return;
   }
 
-  client->setUserName(cmd.params[0].substr(0, 10));
-  client->setRealName(cmd.params[3].substr(0, 50));
+  client->setUsername(cmd.params[0].substr(0, 10));
+  client->setRealname(cmd.params[3].substr(0, 50));
   client->setState(Client::State::USER_RECEIVED);
   if (client->isRegistered()) {
     sendWelcomeMessages(client);
   }
+}
+
+void Server::handleCapNegotiation(Client *client, const Command &cmd) {
+  (void)client, (void)cmd;
+}
+
+void Server::sendWelcomeMessages(Client *client) {
+  (void)client;
 }
 
 void Server::processMessage(Client *client) {
@@ -206,8 +281,8 @@ void Server::processMessage(Client *client) {
 Server::~Server(void) {
   if (_epollFD != -1)
     close(_epollFD);
-  if (epollEvents)
-    delete[] epollEvents;
+  if (_epollEvents)
+    delete[] _epollEvents;
 }
 
 void Server::replyMessage(Client *client, int code, std::string const &msg) {
@@ -220,12 +295,12 @@ void Server::replyMessage(Client *client, int code, std::string const &msg) {
     target = "*";
   message << target << " ";
   message << msg << " \r\n";
-  client->appendToOutgoing(message.str());
+  client->appendToResponseBuffer(message.str());
 }
 
 bool Server::isNicknameInUse(std::string const &nick) {
-  for (auto client : _clients) {
-    if (client->getNickname().compare(nick) == 0) {
+  for (auto &[fd, client] : _clientData) {
+    if (client.getNickname().compare(nick) == 0) {
       return true;
     }
   }

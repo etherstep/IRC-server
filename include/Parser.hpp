@@ -1,5 +1,4 @@
-#ifndef PARSER_HPP
-#define PARSER_HPP
+#pragma once
 #include <optional>
 #include <string_view>
 
@@ -18,11 +17,9 @@ namespace Parser {
  *
  * @param message, a string_view of a received message, including '\r\n'.
  * Underlying string should only be discarded after receiving the response
- * @return std::optional containing a populated Commands struct, if there was
- * a legal-looking IRC command (<:prefix> COMMAND <params>...), or
- * std::nullopt if no command was able to be found in the string
+ * @return std::optional containing a populated Commands struct, if there was a
+ * legal-looking IRC command (<:prefix> COMMAND <params>...), or std::nullopt if
+ * no command was able to be found in the string
  */
 std::optional<Command> parse(std::string_view message);
 }  // namespace Parser
-
-#endif  // PARSER_HPP

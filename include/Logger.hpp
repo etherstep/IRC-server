@@ -1,6 +1,4 @@
-#ifndef LOGGER_HPP
-#define LOGGER_HPP
-
+#pragma once
 #include <fstream>
 #include <mutex>
 #include <sstream>
@@ -30,5 +28,3 @@ class Logger {
 };
 
 #define LOG Logger(__FILE__, __LINE__)
-
-#endif  // LOGGER_HPP

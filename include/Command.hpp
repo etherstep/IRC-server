@@ -1,6 +1,4 @@
-#ifndef COMMAND_HPP
-#define COMMAND_HPP
-
+#pragma once
 #include <string>
 #include <vector>
 
@@ -9,4 +7,3 @@ struct Command {
     std::string              prefix;
     std::vector<std::string> params;
 };
-#endif  // COMMAND_HPP

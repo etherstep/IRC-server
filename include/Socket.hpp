@@ -1,5 +1,4 @@
-#ifndef SOCKET_HPP
-#define SOCKET_HPP
+#pragma once
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -20,7 +19,6 @@
 class Socket {
   public:
     ~Socket();
-
     /**
      * @brief creates and returns a socket to listen on the specified port
      *
@@ -28,7 +26,6 @@ class Socket {
      * @return Socket object
      */
     static Socket *makeListeningSocket(int32_t port);
-
     /**
      * @brief Wrap a give file descriptor in a Socket object
      *
@@ -36,7 +33,6 @@ class Socket {
      * @return Socket object
      */
     static Socket *makeClientSocket(int32_t clientFD);
-
     /**
      * @brief make the give fd nonblocking with fcntl
      *
@@ -44,7 +40,6 @@ class Socket {
      * @return void
      */
     void makeNonBlocking(int32_t fd);
-
     /**
      * @brief return the contained fd
      *
@@ -75,5 +70,3 @@ class Socket {
     Socket(int32_t fd);
     int32_t _fd;
 };
-
-#endif  // SOCKET_HPP

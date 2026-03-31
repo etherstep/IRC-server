@@ -7,7 +7,9 @@
 #include <unistd.h>
 
 #include <cstdint>
+#include <iostream>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -20,6 +22,10 @@
 #define RCVBUF_SIZE 65536
 #define SNDBUF_SIZE 65536
 
+#define POLL_TIME 1000
+
+class Client;
+
 class Server {
   private:
     // Listening
@@ -29,23 +35,26 @@ class Server {
 
     // Polling
     struct epoll_event  _epoll{};
-    struct epoll_event *epollEvents{};
+    struct epoll_event *_epollEvents{};
     int32_t             _epollFD = -1;
     int32_t             _nEpollFDs;
 
-    // Clients
-    std::vector<Client *>       _clients;
-    std::map<int32_t, Client *> _ClientMap;
+    /**
+     * @brief map of Client classes, each has its own Socket class
+     */
+    std::unordered_map<int, Client> _clientData;
 
     // functionality
     using Function = void (Server::*)(Client *, const Command &);
     void handlePassword(Client *client, const Command &cmd);
     void handleNickname(Client *client, const Command &cmd);
     void handleUserJoin(Client *client, const Command &cmd);
+    void handleCapNegotiation(Client *client, const Command &cmd);
     inline static const std::unordered_map<std::string, Function> _functionMap =
         {{"PASS", &Server::handlePassword},
          {"NICK", &Server::handleNickname},
-         {"USER", &Server::handleUserJoin}};
+         {"USER", &Server::handleUserJoin},
+         {"CAP", &Server::handleCapNegotiation}};
 
     // formulate responses
     void replyMessage(Client *client, int code, std::string const &msg);
@@ -64,12 +73,12 @@ class Server {
     /**
      * @brief Initializes Server object with given <port>, <backlogSize> and
      * <pwd>. The private member struct sockadrr_in is initialized with the
-     * given port for IPv4 Clients. The send buffer size and receive buffer
+     * given port for IPv4 connections. The send buffer size and receive buffer
      * sizes are initialized according to Server.hpp macros SNDBUF_SIZE and
      * RCVBUF_SIZE.
      *
-     * @param port Port used to listen for new Clients.
-     * @param backlogSize Queue size for pending Clients
+     * @param port Port used to listen for new connections.
+     * @param backlogSize Queue size for pending connections
      * @param pwd Password used to connect to server
      */
     Server(const int32_t port, const uint32_t backlogSize,
@@ -97,6 +106,28 @@ class Server {
      * @brief Returns a reference to the vector of client side FD's
      */
     std::vector<int32_t> &getClients(void) const;
+
+    /**
+     * @brief add a new client to the map
+     *
+     * @param fd
+     */
+    void addClient(int fd, Socket *soc);
+
+    /**
+     * @brief remove a client from the map
+     *
+     * @param fd
+     */
+    void removeClient(int fd);
+
+    /**
+     * @brief find a client by fd
+     *
+     * @param fd
+     * @return
+     */
+    Client *getClient(int fd);
 
     /**
      * @brief Starts the server and initializes _epollfd. Starts polling on the

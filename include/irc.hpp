@@ -1,3 +1,4 @@
+#pragma once
 #include <asm-generic/socket.h>
 #include <err.h>
 #include <netinet/in.h>
@@ -12,6 +13,9 @@
 #include <cstdlib>
 #include <iostream>
 #include <vector>
+
+#include "Logger.hpp"
+#include "Server.hpp"
 
 /*
  * htonl, htons, ntohl, ntohs

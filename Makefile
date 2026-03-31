@@ -27,19 +27,19 @@ MAKEFLAGS		+= -s
 
 # ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ VISUAL STYLING ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ #
 
-COLORS		:= $(shell tput colors 2>/dev/null || echo 0)
+COLORS				:= $(shell tput colors 2>/dev/null || echo 0)
 ifeq ($(shell [ $(COLORS) -ge 256 ] && echo yes),yes)
-GIT_HASH_COLOR   := $(shell tput setaf 73)
-GIT_AUTHOR_COLOR := $(shell tput setaf 153)
-GIT_BRANCH_COLOR := $(shell tput setaf 150)
-GIT_TAG_COLOR    := $(shell tput setaf 179)
-GIT_HEADER_COLOR := $(shell tput setaf 67)
-GIT_LABEL_COLOR  := $(shell tput setaf 246)
+GIT_HASH_COLOR		:= $(shell tput setaf 73)
+GIT_AUTHOR_COLOR	:= $(shell tput setaf 153)
+GIT_BRANCH_COLOR	:= $(shell tput setaf 150)
+GIT_TAG_COLOR		:= $(shell tput setaf 179)
+GIT_HEADER_COLOR	:= $(shell tput setaf 67)
+GIT_LABEL_COLOR		:= $(shell tput setaf 246)
 else
-GIT_HASH		:= $(shell tput setaf 4)
-GIT_AUTHOR		:= $(shell tput setaf 5)
-GIT_BRANCH		:= $(shell tput setaf 6)
-GIT_TAG			:= $(shell tput setaf 3)
+GIT_HASH			:= $(shell tput setaf 4)
+GIT_AUTHOR			:= $(shell tput setaf 5)
+GIT_BRANCH			:= $(shell tput setaf 6)
+GIT_TAG				:= $(shell tput setaf 3)
 endif
 
 # Terminal colors for build output
@@ -58,11 +58,11 @@ RESET		:= $(shell tput sgr0)
 SRCS_MAIN	:= \
 	main.cpp \
 	Logger.cpp \
-	Socket.cpp \
 	Server.cpp \
-	Client.cpp \
+	Socket.cpp \
 	Parser.cpp \
-
+	Client.cpp \
+	Utils.cpp
 
 # Combine all source files
 SRCS		:= \
@@ -82,12 +82,22 @@ TEST_EXEC := test_runner
 OBJS				:= $(addprefix $(OBJ_DIR)/,$(SRCS:.cpp=.o))
 TOTAL_SRCS			:= $(words $(SRCS))
 LOCK_FILE			:= $(OBJ_DIR)/.build.lock
-PROGRESS_SENTINEL	:= $(OBJ_DIR)/.progress_reset
 
-GIT_HASH	:= $(shell git rev-parse --short HEAD)
-GIT_AUTHOR	:= $(shell git show --format="%an <%ae>" -s $(GIT_HASH))
-GIT_BRANCH	:= $(shell git rev-parse --abbrev-ref HEAD)
-GIT_TAG 	:= $(shell git rev-parse --abbrev-ref --tags)
+# git log variables
+GIT_HASH			:= $(shell git rev-parse --short HEAD)
+GIT_AUTHOR			:= $(shell git show --format="%an <%ae>" \
+						-s $(GIT_HASH))
+GIT_BRANCH			:= $(shell git rev-parse --abbrev-ref HEAD)
+GIT_TAG 			:= $(shell git rev-parse --abbrev-ref --tags)
+GIT_REMOTE_STATUS	:= $(shell git rev-list --left-right --count \
+						origin/$(GIT_BRANCH)...HEAD 2>/dev/null | \
+						awk '{print "↓"$$1" ↑"$$2}')
+GIT_COMMIT_COUNT	:= $(shell git rev-list --count HEAD)
+GIT_DATE        	:= $(shell git show -s --format="%cd" \
+						--date=format:"%Y-%m-%d %H:%M" HEAD)
+
+# Injects a fingerprint macro at build time, so program can log current build
+CXXFLAGS += -DGIT_HASH=\"$(GIT_HASH)\"
 
 SHELL	:= /bin/bash
 
@@ -100,7 +110,9 @@ define PROGRESS
 	IDX=$$(( $$(cat $(LOCK_FILE) 2>/dev/null || echo 0) + 1 )); \
 	echo $$IDX > $(LOCK_FILE); \
 	PCT=$$((IDX * 100 / $(TOTAL_SRCS))); \
+	PCT=$$((PCT > 100 ? 100 : PCT)); \
 	BAR_FILLED=$$((IDX * 20 / $(TOTAL_SRCS))); \
+	BAR_FILLED=$$((BAR_FILLED > 20 ? 20 : BAR_FILLED)); \
 	BAR_EMPTY=$$((20 - BAR_FILLED)); \
 	FILLED_BODY=$$((BAR_FILLED > 1 ? BAR_FILLED - 1 : 0)); \
 	FILLED=""; for ((i=0; i<FILLED_BODY; i++)); do FILLED+="━"; done; \
@@ -115,8 +127,16 @@ define PROGRESS
 	if [ $$PCT -eq 100 ]; then SPIN="✓"; \
 	else \
 		case $$((IDX % 10)) in \
-			0) SPIN="⠋";; 1) SPIN="⠙";; 2) SPIN="⠹";; 3) SPIN="⠸";; 4) SPIN="⠼";; \
-			5) SPIN="⠴";; 6) SPIN="⠦";; 7) SPIN="⠧";; 8) SPIN="⠇";; 9) SPIN="⠏";; \
+			0) SPIN="⠋";; \
+			1) SPIN="⠙";; \
+			2) SPIN="⠹";; \
+			3) SPIN="⠸";; \
+			4) SPIN="⠼";; \
+			5) SPIN="⠴";; \
+			6) SPIN="⠦";; \
+			7) SPIN="⠧";; \
+			8) SPIN="⠇";; \
+			9) SPIN="⠏";; \
 		esac; \
 	fi; \
 	printf "\r$$SPIN $$COLOR$$FILLED$$EDGE$$EMPTY\033[0m %3d%% %-30s" $$PCT "$<"
@@ -124,9 +144,8 @@ endef
 
 # ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ BUILD TARGETS ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ #
 
-.PHONY: all debug clean fclean re
+.PHONY: all debug clean fclean re print-version
 # Default target
-
 all: print-version $(NAME)
 	@if [ ! -f $(OBJ_DIR)/.built ]; then \
 		echo ">$(BOLD)$(YELLOW) $(NAME) is already up to date.$(RESET)"; \
@@ -142,7 +161,7 @@ $(NAME): $(OBJS)
 	@touch $(OBJ_DIR)/.built
 	@echo ">$(BOLD)$(GREEN) $(NAME) successfully linked!$(RESET)"
 
-$(OBJ_DIR)/%.o: %.cpp | $(OBJ_DIR) $(DEP_DIR) $(PROGRESS_SENTINEL)
+$(OBJ_DIR)/%.o: %.cpp | $(OBJ_DIR) $(DEP_DIR)
 	@( flock 9; $(PROGRESS) ) 9<>$(LOCK_FILE)
 	@$(CXX) $(CXXFLAGS) $(DEPFLAGS) -c $< -o $@ $(INC)
 
@@ -156,15 +175,12 @@ $(OBJ_DIR):
 $(DEP_DIR): | $(OBJ_DIR)
 	@mkdir -p $@
 
-$(PROGRESS_SENTINEL): | $(OBJ_DIR)
-	@rm -rf $(LOCK_FILE)
-	@touch $@
-
+# git logs
 print-version:
 	@echo "$(BOLD)$(GIT_HEADER_COLOR)━━ Git Build Info ━━$(RESET)"
-	@echo "$(GIT_LABEL_COLOR)Branch:$(RESET)  $(GIT_BRANCH_COLOR)$(GIT_BRANCH)$(RESET)"
+	@echo "$(GIT_LABEL_COLOR)Branch:$(RESET)  $(GIT_BRANCH_COLOR)$(GIT_BRANCH)   $(GIT_REMOTE_STATUS)$(RESET)"
 	@echo "$(GIT_LABEL_COLOR)Author:$(RESET)  $(GIT_AUTHOR_COLOR)$(GIT_AUTHOR)$(RESET)"
-	@echo "$(GIT_LABEL_COLOR)Commit:$(RESET)  $(GIT_HASH_COLOR)$(GIT_HASH)$(RESET)"
+	@echo "$(GIT_LABEL_COLOR)Commit:$(RESET)  $(GIT_HASH_COLOR)$(GIT_HASH)  $(GIT_DATE)  ($(GIT_COMMIT_COUNT) commits)$(RESET)"
 	@echo "$(GIT_LABEL_COLOR)Tag:$(RESET)     $(GIT_TAG_COLOR)$(GIT_TAG)$(RESET)"
 
 debug: CXXFLAGS	+= $(DEBUG_FLAGS)
