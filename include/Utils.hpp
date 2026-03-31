@@ -14,6 +14,7 @@ constexpr int RPL_MYINFO = 4;
 constexpr int ERR_NOSUCHNICK = 401;
 constexpr int ERR_NOSUCHCHANNEL = 403;
 constexpr int ERR_CANNOTSENDTOCHAN = 404;
+constexpr int ERR_INPUTTOOLONG = 417;
 constexpr int ERR_UNKNOWNCOMMAND = 421;
 constexpr int ERR_NONICKNAMEGIVEN = 431;
 constexpr int ERR_ERRONEUSNICKNAME = 432;

@@ -170,12 +170,18 @@ void Server::handleUserJoin(Client *client, const Command &cmd) {
     return;
   }
 
-  if (Utils::validateNickname(cmd.params[0])) {
-    client->setName(cmd.params[0]);
-    client->setState(Client::State::USER_RECEIVED);
-    if (client->isRegistered()) {
-      sendWelcomeMessages(client);
-    }
+  if (cmd.params[0].find_first_of("@!") != std::string::npos) {
+    // Could also just remove illegal chars instead of rejecting message?
+    replyMessage(client, Numeric::ERR_NEEDMOREPARAMS,
+                 "USER :Illegal characters in username");
+    return;
+  }
+
+  client->setUserName(cmd.params[0].substr(0, 10));
+  client->setRealName(cmd.params[3].substr(0, 50));
+  client->setState(Client::State::USER_RECEIVED);
+  if (client->isRegistered()) {
+    sendWelcomeMessages(client);
   }
 }
 

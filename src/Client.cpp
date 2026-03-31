@@ -101,3 +101,19 @@ void Client::setState(State s) {
                                      : _state = State::USER_RECEIVED;
   }
 }
+
+std::string Client::getUserName() {
+  return _userName;
+}
+
+void Client::setUserName(std::string const &name) {
+  _userName = name;
+}
+
+std::string Client::getRealName() {
+  return _realName;
+}
+
+void Client::setRealName(std::string const &name) {
+  _realName = name;
+}
