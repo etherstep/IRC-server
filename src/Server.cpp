@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "Client.hpp"
 #include "Logger.hpp"
 
 Server::Server(const int32_t port, const uint32_t backlogSize,
@@ -47,7 +48,7 @@ void Server::run(void) {
   char buffer[2048];
   while (true) {
     std::cout << "Polling for new connections. Clients: ";
-    std::cout << _clients.size() << std::endl;
+    std::cout << _clientData.size() << std::endl;
     _nEpollFDs = epoll_wait(_epollFD, epollEvents, _backlogSize, POLL_TIME);
     for (int i = 0; i < _nEpollFDs; ++i) {
       if (epollEvents[i].data.fd == _listenSocket->getFD()) {
@@ -57,6 +58,9 @@ void Server::run(void) {
           continue;
         }
         Socket *clientSocket = Socket::makeClientSocket(clientFD);
+        add_client(clientFD);
+        get_client(clientFD)->set_nick();
+        Client::setClientSocket(clientSocket);
 
         struct epoll_event connectionPoll{};
         connectionPoll.events = EPOLLIN;
@@ -67,7 +71,6 @@ void Server::run(void) {
           continue;
         }
 
-        _clients.push_back(clientSocket);
       } else {
         ssize_t received =
             recv(epollEvents[i].data.fd, buffer, sizeof(buffer), MSG_DONTWAIT);
