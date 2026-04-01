@@ -1,8 +1,9 @@
 #pragma once
 #include <cstdint>
-#include <stdexcept>
 #include <string>
 #include <vector>
+
+#include "Client.hpp"
 
 class Channel {
   public:
@@ -18,13 +19,6 @@ class Channel {
 
     std::vector<Channel::User> _users;
 
-    // FIXME: Do we need separate vector for just operators?
-    std::vector<Channel::User> _operators;
-
-    // WARN: Nickname masks not in subject
-    // std::string _banMask = "";
-    // std::string _banExceptionMask = "";
-
   public:
     Channel(const Client &client, const std::string &name);
     ~Channel();
@@ -38,19 +32,19 @@ class Channel {
 
     class User {
       private:
-        // NOTE: Store the global client in here
-        bool isOperator = false;
+        const Client &_client;
+        bool          _isOperator = false;
 
       public:
         User(const Client &client);
+        User(const User &other);
         ~User();
 
         User() = delete;
-        User(const User &other) = delete;
         User &operator&(const User &other) = delete;
 
         // FIXME: Use toggle or separate add and remove?
-        // void togglePrivilege(const Privilege privilege);
+        void toggleOperatorPrivilege(void);
         // TODO: add operator privilege to user
         void addOperatorPrivilege(void);
         // TODO: remove operator privilege from user
@@ -63,19 +57,10 @@ class Channel {
       TOPIC_SET_BY_CHANOP_ONLY = 1 << 1,
       KEY_PROTECTED = 1 << 2,
       LIMITED_USER_COUNT = 1 << 3,
-
-      // WARN: Not in subject:
-      // ANONYMOUS = 1 << 4,
-      // MODERATED = 1 << 5,
-      // NO_MESSAGES_FROM_OUTSIDE = 1 << 6,
-      // QUIET_CHANNEL = 1 << 7,
-      // PRIVATE_CHANNEL = 1 << 8,
-      // SECRET_CHANNEL = 1 << 9,
-      // SERVER_REOP_CHANNEL = 1 << 10,
     };
 
     // FIXME: Operator commands:
-    void addUser(Client &client);
+    void addUser(const Client &client);
 
     // NOTE: Operator commands:
     void kickUser(User &user);
@@ -93,9 +78,9 @@ class Channel {
 
     // void setMode(Mode mode);
 
-    void toggleChannelFlag(const ChannelFlag flag);
+    void toggleFlag(const ChannelFlag flag);
 
-    void resetChannelFlags(void);
+    void resetFlags(void);
 
     bool isFlagOn(const ChannelFlag flag);
 
@@ -142,20 +127,35 @@ class Channel {
     // MODE query.
 
     void setUserLimit(const unsigned int limit);
-
-    /* WARN: Not defined in subject
-     * a - toggle the anonymous channel flag;
-     * m - toggle the moderated channel;
-     * n - toggle the no messages to channel from clients on the outside;
-     * q - toggle the quiet channel flag;
-     * p - toggle the private channel flag;
-     * s - toggle the secret channel flag;
-     * r - toggle the server reop channel flag;
-     * O - give "channel creator" status;
-     * v - give / take the voice privilege;
-     * b - set / remove ban mask to keep users out;
-     * e - set / remove an exception mask to override a ban mask;
-     * I - set / remove an invitation mask to automatically override the
-     * invite-only flag; };
-     */
 };
+
+// WARN: Not in subject:
+// enum class ChannelFlag{
+//  ANONYMOUS = 1 << 4,
+//  MODERATED = 1 << 5,
+//  NO_MESSAGES_FROM_OUTSIDE = 1 << 6,
+//  QUIET_CHANNEL = 1 << 7,
+//  PRIVATE_CHANNEL = 1 << 8,
+//  SECRET_CHANNEL = 1 << 9,
+//  SERVER_REOP_CHANNEL = 1 << 10,
+// };
+
+// WARN: Nickname masks not in subject
+// std::string _banMask = "";
+// std::string _banExceptionMask = "";
+
+/* WARN: Not defined in subject
+ * a - toggle the anonymous channel flag;
+ * m - toggle the moderated channel;
+ * n - toggle the no messages to channel from clients on the outside;
+ * q - toggle the quiet channel flag;
+ * p - toggle the private channel flag;
+ * s - toggle the secret channel flag;
+ * r - toggle the server reop channel flag;
+ * O - give "channel creator" status;
+ * v - give / take the voice privilege;
+ * b - set / remove ban mask to keep users out;
+ * e - set / remove an exception mask to override a ban mask;
+ * I - set / remove an invitation mask to automatically override the
+ * invite-only flag; };
+ */

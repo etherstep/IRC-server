@@ -62,8 +62,8 @@ SRCS_MAIN	:= \
 	Socket.cpp \
 	Parser.cpp \
 	Client.cpp \
-	Utils.cpp
-	Channel.cpp
+	Utils.cpp \
+	Channel.cpp \
 
 # Combine all source files
 SRCS		:= \

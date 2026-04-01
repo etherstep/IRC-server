@@ -3,13 +3,14 @@
 #include "irc.hpp"
 
 int main(void) {
-  Channel channel;
-  channel.toggleChannelFlag(Channel::ChannelFlag::KEY_PROTECTED);
-  std::cout << channel.isFlagOn(Channel::ChannelFlag::INVITE_ONLY) << std::endl;
-  channel.toggleChannelFlag(Channel::ChannelFlag::INVITE_ONLY);
-  std::cout << channel.isFlagOn(Channel::ChannelFlag::INVITE_ONLY) << std::endl;
-  channel.toggleChannelFlag(Channel::ChannelFlag::INVITE_ONLY);
-  std::cout << channel.isFlagOn(Channel::ChannelFlag::INVITE_ONLY) << std::endl;
+  Client  client;
+  Client  client2;
+  Channel channel(client, "test");
+  std::cout << channel.getUserCount() << std::endl;
+  channel.addUser(client2);
+  std::cout << channel.getUserCount() << std::endl;
+
+  return (0);
 }
 
 //
