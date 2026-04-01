@@ -9,16 +9,21 @@ class Channel {
     class User;
 
   private:
-    uint16_t     _channelFlags = 0;
+    std::string  _name = "";
     std::string  _key = "";
+    std::string  _topic = "";
+    std::string  _invitationMask = "";
     unsigned int _userLimit = 0;
-
-    // NOTE: Nickname masks
-    std::string banMask = "";
-    std::string banExceptionMask = "";
-    std::string invitationMask = "";
+    uint16_t     _channelFlags = 0;
 
     std::vector<Channel::User> _users;
+
+    // FIXME: Do we need separate vector for just operators?
+    std::vector<Channel::User> _operators;
+
+    // WARN: Nickname masks not in subject
+    // std::string _banMask = "";
+    // std::string _banExceptionMask = "";
 
   public:
     Channel();
@@ -26,10 +31,13 @@ class Channel {
     Channel &operator=(const Channel &other) = delete;
     ~Channel();
 
+    const std::string &getName(void) const;
+    unsigned int       getUserCount(void) const;
+
     class User {
       private:
         // NOTE: Store the global client in here
-        uint16_t _privileges = 0;
+        bool isOperator = false;
 
       public:
         User();
@@ -37,24 +45,19 @@ class Channel {
         User &operator&(const User &other) = delete;
         ~User();
 
-        enum class Privilege : uint16_t {
-          OWNER = 1,
-          OPERATOR = 1 << 1,
-        };
-
         // FIXME: Use toggle or separate add and remove?
         // void togglePrivilege(const Privilege privilege);
-        // TODO: add privilege to user
-        void addPrivilege(const Privilege privilege);
-        // TODO: remove privilege from user
-        void removePrivilege(const Privilege privilege);
+        // TODO: add operator privilege to user
+        void addOperatorPrivilege(void);
+        // TODO: remove operator privilege from user
+        void removeOperatorPrivilege(void);
     };
 
     enum class ChannelFlag : uint16_t {
       // NOTE: Mandatory:
       INVITE_ONLY = 1,
-      TOPIC_SET_MY_CHANOP_ONLY = 1 << 1,
-      PASSWORD_PROTECTED = 1 << 2,
+      TOPIC_SET_BY_CHANOP_ONLY = 1 << 1,
+      KEY_PROTECTED = 1 << 2,
       LIMITED_USER_COUNT = 1 << 3,
 
       // WARN: Not in subject:
@@ -67,32 +70,72 @@ class Channel {
       // SERVER_REOP_CHANNEL = 1 << 10,
     };
 
+    void addUser(Client &client);
+
     // NOTE: Operator commands:
     void kickUser(User &user);
-    void inviteUser(User &user);
+
+    // TODO:4.3.2 Channel Invitation
+    // For channels which have the invite-only flag set (See Section 4.2.2
+    // (Invite Only Flag)), users whose address matches an invitation mask set
+    // for the channel are allowed to join the channel without any invitation.
+
+    void inviteUser(const std::string &user);
+
     void changeTopic(const std::string &topic);
+
     void viewTopic(void);
+
     // void setMode(Mode mode);
 
     void toggleChannelFlag(const ChannelFlag flag);
+
     void resetChannelFlags(void);
+
+    bool isFlagOn(const ChannelFlag flag);
 
     // FIXME: Mandatory: Use separate function for all (wrapper for
     // toggleChannelFlag()) or just use the toggleChannelFlag()?
 
     // TODO: i - toggle the invite - only channel                      flag;
+    // 4.2.2 Invite Only Flag
+    // When the channel flag 'i' is set, new members are only accepted if their
+    // mask matches Invite-list (See section 4.3.2) or they have been invited by
+    // a channel operator.  This flag also restricts the usage of the INVITE
+    // command (See "IRC Client Protocol" [IRC-CLIENT]) to channel operators.
+
     void toggleInviteOnly(void);
 
     // TODO: t - toggle the topic settable by channel operator only flag;
+    // 4.2.8 Topic
+    // The channel flag 't' is used to restrict the usage of the
+    // TOPIC command to channel operators.
+
     void toggleTopicSettableByChanopOnly(void);
 
     // TODO: k - set / remove the channel       key(password);
+    // 4.2.10 Channel Key
+    // When a channel key is set (by using the mode 'k'), servers MUST reject
+    // their local users request to join the channel unless this key is given.
+    // The channel key MUST only be made visible to the channel members in the
+    // reply sent by the server to a MODE query.
+
     void toggleChannelKey(const std::string &key);
 
     // TODO: o - give / take channel   operator privilege;
+    // 4.1.2 Channel Operator Status
+    // The mode 'o' is used to toggle the operator status of a channel member.
+
     void toggleChannelOperatorPrivilege(User &user);
 
     // TODO: l - set / remove the user limit to channel;
+    // 4.2.9 User Limit
+    // A user limit may be set on channels by using the channel
+    // flag 'l'. When the limit is reached, servers MUST forbid their local
+    // users to join the channel. The value of the limit MUST only be made
+    // available to the channel members in the reply sent by the server to a
+    // MODE query.
+
     void setUserLimit(const unsigned int limit);
 
     /* WARN: Not defined in subject
@@ -111,9 +154,3 @@ class Channel {
      * invite-only flag; };
      */
 };
-
-// NOTE: Channel::ChannelFlag:
-uint16_t operator<<(uint16_t shift, Channel::ChannelFlag flag);
-
-// NOTE: Channel::User::Privilege:
-uint16_t operator<<(uint16_t shift, Channel::User::Privilege privilege);

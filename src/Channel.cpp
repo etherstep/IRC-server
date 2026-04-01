@@ -4,48 +4,27 @@ Channel::Channel() {}
 
 Channel::~Channel() {}
 
+const std::string &Channel::getName(void) const {
+  return (_name);
+}
+
+unsigned int Channel::getUserCount(void) const {
+  return (_users.size());
+}
+
 void Channel::resetChannelFlags(void) {
   _channelFlags = 0;
 }
 
 void Channel::toggleChannelFlag(const ChannelFlag flag) {
-  _channelFlags ^= 1 << flag;
-
-  // FIX: Switch to handle more logic? ChannelFlag already quarantees type
-  // safety switch (flag) {
-  //   case ChannelFlag::ANONYMOUS:
-  //     break;
-  //   case ChannelFlag::INVITE_ONLY:
-  //     break;
-  //   case ChannelFlag::MODERATED:
-  //     break;
-  //   case ChannelFlag::NO_MESSAGES_FROM_OUTSIDE:
-  //     break;
-  //   case ChannelFlag::QUIT_CHANNEL:
-  //     break;
-  //   case ChannelFlag::PRIVATE_CHANNEL:
-  //     break;
-  //   case ChannelFlag::SECRET_CHANNEL:
-  //     break;
-  //   case ChannelFlag::SERVER_REOP_CHANNEL:
-  //     break;
-  //   case ChannelFlag::TOPIC_SET_MY_CHANOP_ONLY:
-  //     break;
-  //   default:
-  //     throw std::runtime_error("Unidentified flag");
-  //     break;
-  // }
+  _channelFlags ^= static_cast<uint16_t>(flag);
 }
 
-uint16_t operator<<(uint16_t shift, Channel::ChannelFlag flag) {
-  return (shift << static_cast<uint16_t>(flag));
+bool Channel::isFlagOn(const ChannelFlag flag) {
+  return (_channelFlags & static_cast<uint16_t>(flag));
 }
 
 // NOTE: USER:
 
 Channel::User::User() {}
 Channel::User::~User() {}
-
-uint16_t operator<<(uint16_t shift, Channel::User::Privilege privilege) {
-  return (shift << static_cast<uint16_t>(privilege));
-}
