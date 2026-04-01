@@ -10,7 +10,9 @@ void Channel::resetChannelFlags(void) {
 
 void Channel::toggleChannelFlag(const ChannelFlag flag) {
   _channelFlags ^= 1 << flag;
-  // switch (flag) {
+
+  // FIX: Switch to handle more logic? ChannelFlag already quarantees type
+  // safety switch (flag) {
   //   case ChannelFlag::ANONYMOUS:
   //     break;
   //   case ChannelFlag::INVITE_ONLY:
@@ -37,4 +39,13 @@ void Channel::toggleChannelFlag(const ChannelFlag flag) {
 
 uint16_t operator<<(uint16_t shift, Channel::ChannelFlag flag) {
   return (shift << static_cast<uint16_t>(flag));
+}
+
+// NOTE: USER:
+
+Channel::User::User() {}
+Channel::User::~User() {}
+
+uint16_t operator<<(uint16_t shift, Channel::User::Privilege privilege) {
+  return (shift << static_cast<uint16_t>(privilege));
 }
