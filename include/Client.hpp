@@ -11,8 +11,8 @@ class Client {
     Client();
     Client(const Client &) = delete;
     Client &operator=(const Client &) = delete;
-    Client(Client &&) = default;  // move constructor
-    Client &operator=(Client &&) = default;
+    // Client(Client &&) = default;
+    // Client &operator=(Client &&) = default;
     ~Client();
 
     enum class State {
