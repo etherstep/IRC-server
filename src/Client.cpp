@@ -121,11 +121,8 @@ std::string Client::getRealname() {
 void Client::setRealname(std::string const &name) {
   _realname = name;
 }
-Client::Client() {};
-
-Client::~Client() {};
 
 /**
  * @brief defining the static member to avoid linker errors
  */
-Socket *Client::_clientSocket;
+// Socket *Client::_clientSocket;
