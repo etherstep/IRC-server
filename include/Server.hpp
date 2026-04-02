@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -155,10 +156,10 @@ class Server {
     std::vector<std::unique_ptr<Channel>> &getChannels(void);
 
     /**
-     * @brief Tries to find a Channel with the name <target>. If not found,
-     * throws a std::runtime_error exception
+     * @brief Tries to find a Channel with the name <channelName>
      *
-     * @param target Name of the Channel to search for
+     * @param channelName Name to look for in the channels.
      */
-    Channel &findChannel(const std::string &target) const;
+    std::optional<std::reference_wrapper<Channel>> findChannel(
+        const std::string &channelName) const;
 };

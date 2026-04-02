@@ -13,21 +13,22 @@ int main(void) {
   pekka.setNickname("pekka");
   esko.setNickname("esko");
 
-  Channel &channel = server.newChannel(pekka, "Test channel");
+  server.newChannel(pekka, "Test channel");
+  auto channel = server.findChannel("Test channel");
+  if (channel) {
+    std::cout << channel->get().getName() << std::endl;
+    std::cout << channel->get().getUserCount() << std::endl;
+    channel->get().addUser(esko);
+    std::cout << channel->get().getName() << std::endl;
+    std::cout << channel->get().getUserCount() << std::endl;
+    channel->get().kickUser("esko");
+    std::cout << channel->get().getName() << std::endl;
+    std::cout << channel->get().getUserCount() << std::endl;
+    channel->get().kickUser("pekka");
+    std::cout << channel->get().getName() << std::endl;
+    std::cout << channel->get().getUserCount() << std::endl;
+  }
 
-  std::cout << server.getChannels()[0]->getName() << std::endl;
-  std::cout << server.getChannels()[0]->getUserCount() << std::endl;
-  std::cout << channel.getName() << std::endl;
-  std::cout << channel.getUserCount() << std::endl;
-  channel.addUser(esko);
-  std::cout << channel.getName() << std::endl;
-  std::cout << channel.getUserCount() << std::endl;
-  channel.kickUser("esko");
-  std::cout << channel.getName() << std::endl;
-  std::cout << channel.getUserCount() << std::endl;
-  channel.kickUser("pekka");
-  std::cout << channel.getName() << std::endl;
-  std::cout << channel.getUserCount() << std::endl;
   return (0);
 }
 

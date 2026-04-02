@@ -304,10 +304,11 @@ std::vector<std::unique_ptr<Channel>> &Server::getChannels(void) {
   return (_channels);
 }
 
-Channel &Server::findChannel(const std::string &target) const {
+std::optional<std::reference_wrapper<Channel>> Server::findChannel(
+    const std::string &channelName) const {
   for (const auto &e : _channels) {
-    if (e->getName() == target)
-      return (*e);
+    if (e->getName() == channelName)
+      return (std::ref(*e));
   }
-  throw std::runtime_error("Channel with name " + target + " not found");
+  return (std::nullopt);
 }

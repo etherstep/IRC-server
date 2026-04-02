@@ -53,11 +53,10 @@ class Channel {
     User &addUser(const Client &client);
 
     /**
-     * @brief Tries to find a User from Channel based on name <target>.
+     * @brief Tries to find User with <nickname> from _users. Returns a
+     * std::optional containing a reference of the User.
      *
-     * @param nickname Nickname to look for.
-     * @return Returns a reference to the User if match found. Throws a
-     * std::runtime_error if not found.
+     * @param nickname Nickname to look for in the _users
      */
     std::optional<std::reference_wrapper<User>> findUser(
         const std::string &nickname);
