@@ -33,7 +33,7 @@ void Client::appendToResponseBuffer(std::string const &msg) {
   _responseBuffer.append(msg);
 }
 
-std::string Client::getResponseBuffer() {
+std::string &Client::getResponseBuffer() {
   return _responseBuffer;
 }
 
@@ -98,7 +98,7 @@ Client::State Client::getState() {
   return _state;
 }
 
-std::string Client::getNickname() {
+const std::string &Client::getNickname() const {
   return _nick;
 }
 
@@ -106,7 +106,7 @@ void Client::setNickname(std::string const &name) {
   _nick = name;
 }
 
-std::string Client::getUsername() {
+const std::string &Client::getUsername() const {
   return _username;
 }
 
@@ -114,7 +114,7 @@ void Client::setUsername(std::string const &name) {
   _username = name;
 }
 
-std::string Client::getRealname() {
+const std::string &Client::getRealname() const {
   return _realname;
 }
 

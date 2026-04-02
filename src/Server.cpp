@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -291,4 +292,22 @@ void Server::disconnectUser(int32_t fd) {
   epoll_ctl(_epollFD, EPOLL_CTL_DEL, fd, NULL);
   _clients.erase(fd);
   _sockets.erase(fd);
+}
+
+// INFO: Channel management:
+Channel &Server::newChannel(const Client &client, const std::string &name) {
+  _channels.emplace_back(std::make_unique<Channel>(*this, client, name));
+  return (*_channels.back());
+}
+
+std::vector<std::unique_ptr<Channel>> &Server::getChannels(void) {
+  return (_channels);
+}
+
+Channel &Server::findChannel(const std::string &target) const {
+  for (const auto &e : _channels) {
+    if (e->getName() == target)
+      return (*e);
+  }
+  throw std::runtime_error("Channel with name " + target + " not found");
 }

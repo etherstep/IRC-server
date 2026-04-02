@@ -42,24 +42,24 @@ class Client {
      */
     std::string extractMessage();
 
-    std::string getNickname();
-    void        setNickname(std::string const &nick);
+    const std::string &getNickname() const;
+    void               setNickname(std::string const &nick);
 
     State getState();
     void  setState(State s);
 
-    std::string getUsername();
-    void        setUsername(std::string const &name);
+    const std::string &getUsername() const;
+    void               setUsername(std::string const &name);
 
-    std::string getRealname();
-    void        setRealname(std::string const &name);
+    const std::string &getRealname() const;
+    void               setRealname(std::string const &name);
 
     bool isRegistered();
     bool shouldClose();
 
-    void        appendToRecvBuffer(std::string const &input);
-    void        appendToResponseBuffer(std::string const &msg);
-    std::string getResponseBuffer();
+    void         appendToRecvBuffer(std::string const &input);
+    void         appendToResponseBuffer(std::string const &msg);
+    std::string &getResponseBuffer();
 
     void setPasswordOK(bool b);
     bool isPasswordOK();
