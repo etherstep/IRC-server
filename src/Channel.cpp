@@ -1,15 +1,11 @@
 #include "Channel.hpp"
 
-#include <functional>
-#include <optional>
-#include <stdexcept>
-
 Channel::Channel(const Server &server, const Client &client,
                  const std::string &name)
     : _server(server), _name(name) {
-  User creator(client);
-  creator.addOperatorPrivilege();
-  _users.try_emplace(client.getNickname(), std::make_unique<User>(creator));
+  auto creator = std::make_unique<User>(client);
+  creator->addOperatorPrivilege();
+  _users.try_emplace(client.getNickname(), std::move(creator));
 }
 
 Channel::~Channel() {}
