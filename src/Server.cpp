@@ -1,24 +1,41 @@
 #include "Server.hpp"
 
+#include <sys/epoll.h>
+
+#include <cerrno>
+#include <iomanip>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+
+#include "Client.hpp"
+#include "Logger.hpp"
+#include "Parser.hpp"
+#include "Utils.hpp"
+
+#define SERVER_NAME "usvaIRC"
 #include <cstring>
 
+#include "Client.hpp"
 #include "Logger.hpp"
 
 Server::Server(const int32_t port, const uint32_t backlogSize,
                const std::string &pwd)
-    : _port(port), _backlogSize(backlogSize), _pwd(pwd) {
+    : _listenSocket(Socket::makeListeningSocket(port)),
+      _port(port),
+      _backlogSize(backlogSize),
+      _pwd(pwd) {
   int sendBufSize = SNDBUF_SIZE;
   int receiveBufSize = RCVBUF_SIZE;
 
-  _listenSocket = Socket::makeListeningSocket(port);
-  if (_listenSocket == nullptr)
-    throw std::runtime_error("Port value out of bounds. Use value 0 - 65535");
-
-  if (setsockopt(_listenSocket->getFD(), SOL_SOCKET, SO_RCVBUF, &receiveBufSize,
+  if (setsockopt(_listenSocket.getFD(), SOL_SOCKET, SO_RCVBUF, &receiveBufSize,
                  sizeof(receiveBufSize)) < 0)
     throw std::runtime_error(
         "Failed to set server listen socket receive buffer size");
-  if (setsockopt(_listenSocket->getFD(), SOL_SOCKET, SO_SNDBUF, &sendBufSize,
+  if (setsockopt(_listenSocket.getFD(), SOL_SOCKET, SO_SNDBUF, &sendBufSize,
                  sizeof(sendBufSize)) < 0)
     throw std::runtime_error(
         "Failed to set server listen socket send buffer size");
@@ -28,11 +45,10 @@ void Server::start(void) {
   if ((_epollFD = epoll_create(_backlogSize)) < 0)
     throw std::runtime_error("Failed to set server");
   _epoll.events = EPOLLIN;
-  _epoll.data.fd = _listenSocket->getFD();
-  if (epoll_ctl(_epollFD, EPOLL_CTL_ADD, _listenSocket->getFD(), &_epoll) < 0)
+  _epoll.data.fd = _listenSocket.getFD();
+  if (epoll_ctl(_epollFD, EPOLL_CTL_ADD, _listenSocket.getFD(), &_epoll) < 0)
     throw std::runtime_error("Failed to start polling on listening socket");
-  LOG << "Starting server, build: " << GIT_HASH;
-  epollEvents = new struct epoll_event[_backlogSize];
+  _epollEvents = new struct epoll_event[_backlogSize];
 }
 
 // FIXME: Should we store client IP and port to a struct inside Socket *
@@ -44,60 +60,254 @@ void Server::start(void) {
 // FIXME: What to do if adding clientSocket->getFD to polling fails?
 // FIXME: What to do if accept() fails?
 void Server::run(void) {
-  char buffer[2048];
   while (true) {
-    std::cout << "Polling for new connections. Clients: ";
-    std::cout << _clients.size() << std::endl;
-    _nEpollFDs = epoll_wait(_epollFD, epollEvents, _backlogSize, POLL_TIME);
+    LOG << "Polling for new connections. Clients: ";
+    LOG << _clients.size();
+    _nEpollFDs = epoll_wait(_epollFD, _epollEvents, _backlogSize, POLL_TIME);
     for (int i = 0; i < _nEpollFDs; ++i) {
-      if (epollEvents[i].data.fd == _listenSocket->getFD()) {
-        int32_t clientFD = accept(_listenSocket->getFD(), NULL, NULL);
-        if (clientFD < 0) {
-          std::cerr << "Failed to accept connection to client\n";
-          continue;
-        }
-        Socket *clientSocket = Socket::makeClientSocket(clientFD);
+      // check for disconnected clients and remove them from the map
+      if (_epollEvents[i].events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) {
+        removeClient(_epollEvents[i].data.fd);
+        continue;
+      }
 
-        struct epoll_event connectionPoll{};
-        connectionPoll.events = EPOLLIN;
-        connectionPoll.data.fd = clientSocket->getFD();
-        if (epoll_ctl(_epollFD, EPOLL_CTL_ADD, clientSocket->getFD(),
-                      &connectionPoll) < 0) {
-          std::cerr << "Failed to add connectiont to polling list\n";
-          continue;
-        }
+      if (_epollEvents[i].data.fd == _listenSocket.getFD()) {
+        while (true) {  // loop until accept() returns -1 and
+                        // errno is EAGAIN or EWOULDBLOCK
+          int32_t clientFD = accept(_listenSocket.getFD(), NULL, NULL);
+          if (clientFD == -1) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+              break;
+            } else {
+              throw std::runtime_error("fatal error accepting clients");
+            }
+          } else {
+            LOG << "New connection accepted on FD: " << clientFD;
+            _sockets.try_emplace(clientFD, Socket::makeClientSocket(clientFD));
+            _clients.try_emplace(clientFD, Client());
 
-        _clients.push_back(clientSocket);
+            struct epoll_event connectionPoll{};
+            connectionPoll.events = EPOLLIN | EPOLLHUP | EPOLLRDHUP | EPOLLERR;
+            connectionPoll.data.fd = clientFD;
+            if (epoll_ctl(_epollFD, EPOLL_CTL_ADD, clientFD, &connectionPoll) <
+                0) {
+              removeClient(clientFD);
+              std::cerr << "Failed to add connection to polling list\n";
+              continue;
+            }
+          }
+        }
       } else {
-        ssize_t received =
-            recv(epollEvents[i].data.fd, buffer, sizeof(buffer), MSG_DONTWAIT);
-        if (received < 0)
+        char    buffer[2048] = {};
+        auto    it = _sockets.find(_epollEvents[i].data.fd);
+        ssize_t received;
+        if (it != _sockets.end()) {
+          received = it->second.receiveData(buffer, sizeof(buffer));
+        } else {
+          epoll_ctl(_epollFD, EPOLL_CTL_DEL, _epollEvents[i].data.fd, NULL);
+          continue;
+        }
+        if (received <= 0) {
           std::cerr << "failed to receive\n";
-        std::cout << "bytes: " << received << std::endl;
-        std::cout << "message: " << buffer;
-        send(epollEvents[i].data.fd, buffer, strlen(buffer), 0);
+          continue;
+        } else {
+          std::cout << "bytes: " << received << std::endl;
+          LOG << "client " << _epollEvents[i].data.fd
+              << " received: " << buffer;
+          auto client = _clients.find(_epollEvents[i].data.fd);
+          if (client != _clients.end()) {
+            client->second.appendToRecvBuffer(buffer);
+            std::string command;
+            while (!(command = client->second.extractMessage()).empty()) {
+              auto cmd = Parser::parse(command);
+              LOG << "Received full command: " << command;
+              processMessage(client->second, cmd);
+            }
+          } else {
+            std::cerr << "Got rogue network packet" << std::endl;
+          }
+        }
       }
     }
   }
 }
 
-void Server::handlePassword(Client *client, const Command &cmd) {
-  (void)client, (void)cmd;
+bool Server::passwordIsCorrect(const std::string &pwd) {
+  return (_pwd.compare(pwd) == 0);
+}
+
+void Server::removeClient(int fd) {
+  _clients.erase(fd);
+  _sockets.erase(fd);
+}
+
+void Server::handlePassword(Client &client, const Command &cmd) {
   LOG << "handling PASS command";
+  if (!client.isRegistered()) {
+    replyMessage(client, Numeric::ERR_ALREADYREGISTRED,
+                 ":Unauthorized command (already registered)");
+    return;
+  }
+
+  if (cmd.params.empty()) {
+    replyMessage(client, Numeric::ERR_NEEDMOREPARAMS,
+                 "PASS :Not enough parameters");
+    return;
+  }
+
+  if (passwordIsCorrect(cmd.params[0])) {
+    LOG << "Password matches";
+    client.setPasswordOK(true);
+  } else {
+    LOG << "Password doesn't match";
+    replyMessage(client, Numeric::ERR_PASSWDMISMATCH, ":Incorrect password");
+  }
 }
 
-void Server::handleNickname(Client *client, const Command &cmd) {
-  (void)client, (void)cmd;
+void Server::handleNickname(Client &client, const Command &cmd) {
   LOG << "handling NICK command";
+  if (!client.isPasswordOK()) {
+    replyMessage(client, Numeric::ERR_PASSWDMISMATCH, ":Incorrect password");
+    return;
+  }
+
+  if (cmd.params.empty()) {
+    replyMessage(client, Numeric::ERR_NONICKNAMEGIVEN, ":No nickname given");
+    return;
+  }
+
+  if (client.isRegistered() ||
+      client.getState() == Client::State::NICK_RECEIVED) {
+    replyMessage(client, Numeric::ERR_ALREADYREGISTRED,
+                 ":Unauthorized command (already registered)");
+    return;
+  }
+
+  if (Utils::validateNickname(cmd.params[0])) {
+    if (isNicknameInUse(cmd.params[0])) {
+      replyMessage(client, Numeric::ERR_NICKNAMEINUSE,
+                   ":Nickname already in use");
+      return;
+    } else {
+      client.setNickname(cmd.params[0]);
+      client.setState(Client::State::NICK_RECEIVED);
+      if (client.isRegistered()) {
+        sendWelcomeMessages(client);
+      }
+    }
+  } else {
+    replyMessage(client, Numeric::ERR_ERRONEUSNICKNAME, ":Erroneous nickname");
+    return;
+  }
 }
 
-void Server::handleUserJoin(Client *client, const Command &cmd) {
-  (void)client, (void)cmd;
-  LOG << "handling NICK command";
+void Server::handleUserJoin(Client &client, const Command &cmd) {
+  LOG << "handling USER command";
+  if (!client.isPasswordOK()) {
+    replyMessage(client, Numeric::ERR_PASSWDMISMATCH, ":Incorrect password");
+    return;
+  }
+
+  if (client.isRegistered() ||
+      client.getState() == Client::State::USER_RECEIVED) {
+    replyMessage(client, Numeric::ERR_ALREADYREGISTRED,
+                 ":Unauthorized command (already registered)");
+    return;
+  }
+
+  if (cmd.params.empty() || cmd.params.size() != 4) {
+    replyMessage(client, Numeric::ERR_NEEDMOREPARAMS,
+                 "USER :Incorrect parameter count");
+    return;
+  }
+
+  if (cmd.params[0].find_first_of("@!") != std::string::npos) {
+    // Could also just remove illegal chars instead of rejecting message?
+    replyMessage(client, Numeric::ERR_NEEDMOREPARAMS,
+                 "USER :Illegal characters in username");
+    return;
+  }
+
+  client.setUsername(cmd.params[0].substr(0, 10));
+  client.setRealname(cmd.params[3].substr(0, 50));
+  client.setState(Client::State::USER_RECEIVED);
+  if (client.isRegistered()) {
+    sendWelcomeMessages(client);
+  }
 }
+
+void Server::handleCapNegotiation(Client &client, const Command &cmd) {
+  (void)client, (void)cmd;
+}
+
+void Server::sendWelcomeMessages(Client &client) {
+  (void)client;
+}
+
+void Server::processMessage(Client &client, std::optional<Command> const &cmd) {
+  if (cmd.has_value()) {
+    auto it = _functionMap.find(cmd->command);
+    if (it != _functionMap.end()) {
+      auto handler = it->second;
+      (this->*handler)(client, *cmd);
+    } else {
+      replyMessage(client, Numeric::ERR_UNKNOWNCOMMAND,
+                   cmd->command + " :command not known");
+    }
+  } else {
+    LOG << "Malformed message received from " << client.getNickname();
+  }
+}
+
 Server::~Server(void) {
   if (_epollFD != -1)
     close(_epollFD);
-  if (epollEvents)
-    delete[] epollEvents;
+  if (_epollEvents)
+    delete[] _epollEvents;
+}
+
+void Server::replyMessage(Client &client, int code, std::string const &msg) {
+  std::ostringstream message;
+
+  message << ":" << SERVER_NAME << " ";
+  message << std::setw(3) << std::setfill('0') << code << " ";
+  std::string target = client.getNickname();
+  if (target.empty() || !client.isRegistered())
+    target = "*";
+  message << target << " ";
+  message << msg << " \r\n";
+  client.appendToResponseBuffer(message.str());
+}
+
+bool Server::isNicknameInUse(std::string const &nick) {
+  for (auto &[fd, client] : _clients) {
+    if (client.getNickname().compare(nick) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void Server::disconnectUser(int32_t fd) {
+  epoll_ctl(_epollFD, EPOLL_CTL_DEL, fd, NULL);
+  _clients.erase(fd);
+  _sockets.erase(fd);
+}
+
+// INFO: Channel management:
+Channel &Server::newChannel(const Client &client, const std::string &name) {
+  _channels.emplace_back(std::make_unique<Channel>(*this, client, name));
+  return (*_channels.back());
+}
+
+std::vector<std::unique_ptr<Channel>> &Server::getChannels(void) {
+  return (_channels);
+}
+
+Channel &Server::findChannel(const std::string &target) const {
+  for (const auto &e : _channels) {
+    if (e->getName() == target)
+      return (*e);
+  }
+  throw std::runtime_error("Channel with name " + target + " not found");
 }

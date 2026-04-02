@@ -8,27 +8,45 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <stdexcept>
+
 #include "Logger.hpp"
 
 Socket::Socket(int32_t fd) : _fd(fd) {};
 
 Socket::~Socket() {
-  close(_fd);
+  if (_fd > 0)
+    close(_fd);
 }
 
-Socket *Socket::makeListeningSocket(int32_t port) {
+Socket::Socket(Socket &&other) noexcept : _fd(other._fd) {
+  other._fd = -1;
+}
+
+Socket &Socket::operator=(Socket &&other) noexcept {
+  if (this != &other) {
+    if (_fd >= 0) {
+      close(_fd);
+    }
+    this->_fd = other._fd;
+    other._fd = -1;
+  }
+  return *this;
+}
+
+Socket Socket::makeListeningSocket(int32_t port) {
   int32_t listenerFD = socket(AF_INET, SOCK_STREAM, 0);
   if (listenerFD == -1) {
     LOG << "Error creating listener socket";
-    return nullptr;
+    throw std::runtime_error("Error creating listener socket");
   }
+  Socket listener(listenerFD);
 
   int32_t option = 1;
   if (setsockopt(listenerFD, SOL_SOCKET, SO_REUSEADDR, &option,
                  sizeof(option)) == -1) {
     LOG << "Error setting socket options";
-    close(listenerFD);
-    return nullptr;
+    throw std::runtime_error("Error setting socket options");
   }
 
   struct sockaddr_in serverAddr = {};
@@ -38,30 +56,38 @@ Socket *Socket::makeListeningSocket(int32_t port) {
   if (bind(listenerFD, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) ==
       -1) {
     LOG << "Error binding socket to port";
-    close(listenerFD);
-    return nullptr;
+    throw std::runtime_error("Error binding socket to port");
   }
 
   if (listen(listenerFD, SOMAXCONN) == -1) {
     LOG << "Error listening to port";
-    close(listenerFD);
-    return nullptr;
+    throw std::runtime_error("Error listening to port");
   }
-  Socket *listener = new Socket(listenerFD);
-  listener->makeNonBlocking(listenerFD);
+
+  listener.makeNonBlocking();
   return listener;
 };
 
-Socket *Socket::makeClientSocket(int32_t clientFD) {
-  Socket *socket = new Socket(clientFD);
-  socket->makeNonBlocking(clientFD);
+Socket Socket::makeClientSocket(int32_t clientFD) {
+  Socket socket = Socket(clientFD);
+  socket.makeNonBlocking();
   return socket;
 };
 
-void Socket::makeNonBlocking(int32_t fd) {
-  fcntl(fd, F_SETFL, O_NONBLOCK);
+void Socket::makeNonBlocking() {
+  if (fcntl(_fd, F_SETFL, O_NONBLOCK) == -1) {
+    throw std::runtime_error("fcntl failed");
+  }
 };
 
 int32_t Socket::getFD() const {
   return _fd;
+}
+
+ssize_t Socket::receiveData(char *buffer, size_t length) {
+  return recv(_fd, buffer, length, 0);
+}
+
+ssize_t Socket::sendData(const char *buffer, size_t length) {
+  return send(_fd, buffer, length, 0);
 }

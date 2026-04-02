@@ -1,5 +1,35 @@
+#include <memory>
+
+#include "Channel.hpp"
 #include "Server.hpp"
 #include "irc.hpp"
+
+// INFO: Channel testing:
+// int main(void) {
+//   Server server(6667, 10, "test");
+//
+//   Client pekka;
+//   Client esko;
+//   pekka.setNickname("pekka");
+//   esko.setNickname("esko");
+//
+//   Channel &channel = server.newChannel(pekka, "Test channel");
+//
+//   std::cout << server.getChannels()[0]->getName() << std::endl;
+//   std::cout << server.getChannels()[0]->getUserCount() << std::endl;
+//   std::cout << channel.getName() << std::endl;
+//   std::cout << channel.getUserCount() << std::endl;
+//   channel.addUser(esko);
+//   std::cout << channel.getName() << std::endl;
+//   std::cout << channel.getUserCount() << std::endl;
+//   channel.kickUser("esko");
+//   std::cout << channel.getName() << std::endl;
+//   std::cout << channel.getUserCount() << std::endl;
+//   channel.kickUser("pekka");
+//   std::cout << channel.getName() << std::endl;
+//   std::cout << channel.getUserCount() << std::endl;
+//   return (0);
+// }
 
 // Connect to UNIX-domain stream socket
 // nc -U /tmp/testsocket

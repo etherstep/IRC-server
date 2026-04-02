@@ -7,50 +7,69 @@
 #include <unistd.h>
 
 #include <cstdint>
-#include <iostream>
-#include <stdexcept>
+#include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "Channel.hpp"
+#include "Client.hpp"
 #include "Command.hpp"
 #include "Socket.hpp"
 
 #define BACKLOG_SIZE 1024
 #define RCVBUF_SIZE 65536
 #define SNDBUF_SIZE 65536
+
 #define POLL_TIME 1000
 
 class Client;
+class Channel;
 
 class Server {
   private:
-    // Listening
-    Socket  *_listenSocket = nullptr;
+    // INFO: Listening
+    Socket   _listenSocket;
     int32_t  _port;
     uint32_t _backlogSize;
 
-    // Polling
+    // INFO: Polling
     struct epoll_event  _epoll{};
-    struct epoll_event *epollEvents{};
+    struct epoll_event *_epollEvents{};
     int32_t             _epollFD = -1;
     int32_t             _nEpollFDs;
 
-    // Clients
-    std::vector<Socket *> _clients;
+    /**
+     * @brief map of Client classes, each has its own Socket class
+     */
+    std::unordered_map<int, Client> _clients;
+    std::unordered_map<int, Socket> _sockets;
 
-    // functionality
-    using Function = void (Server::*)(Client *, const Command &);
-    void handlePassword(Client *client, const Command &cmd);
-    void handleNickname(Client *client, const Command &cmd);
-    void handleUserJoin(Client *client, const Command &cmd);
+    // INFO: Functionality
+    using Function = void (Server::*)(Client &, const Command &);
+    void handlePassword(Client &client, const Command &cmd);
+    void handleNickname(Client &client, const Command &cmd);
+    void handleUserJoin(Client &client, const Command &cmd);
+    void handleCapNegotiation(Client &client, const Command &cmd);
     inline static const std::unordered_map<std::string, Function> _functionMap =
         {{"PASS", &Server::handlePassword},
          {"NICK", &Server::handleNickname},
-         {"USER", &Server::handleUserJoin}};
+         {"USER", &Server::handleUserJoin},
+         {"CAP", &Server::handleCapNegotiation}};
 
-    // Security
+    // INFO: Formulate responses
+    void replyMessage(Client &client, int code, std::string const &msg);
+    void sendWelcomeMessages(Client &client);
+
+    bool isNicknameInUse(std::string const &nick);
+
+    // INFO: Channels:
+    std::vector<std::unique_ptr<Channel>> _channels;
+
+    // INFO: Security
     const std::string _pwd;
+    void              disconnectUser(int32_t fd);
 
   public:
     Server(void) = delete;
@@ -95,6 +114,13 @@ class Server {
     std::vector<int32_t> &getClients(void) const;
 
     /**
+     * @brief remove client and socket from the maps
+     *
+     * @param fd
+     */
+    void removeClient(int fd);
+
+    /**
      * @brief Starts the server and initializes _epollfd. Starts polling on the
      * _listenfd
      */
@@ -108,5 +134,31 @@ class Server {
      */
     bool passwordIsCorrect(const std::string &pwd);
 
+    void processMessage(Client &client, std::optional<Command> const &cmd);
+
     void run(void);
+
+    // INFO: Channel management:
+    /**
+     * @brief Creates a new Channel and emplaces it as a unique_ptr to _channels
+     * vector. Rerturns a reference to this Channel
+     *
+     * @param client Client that is the creator of the Channel.
+     * @param name Name of the Channel
+     * @return Returns a reference to the newly created Channel
+     */
+    Channel &newChannel(const Client &client, const std::string &name);
+
+    /**
+     * @brief Return a reference to the _channels vector of the Server
+     */
+    std::vector<std::unique_ptr<Channel>> &getChannels(void);
+
+    /**
+     * @brief Tries to find a Channel with the name <target>. If not found,
+     * throws a std::runtime_error exception
+     *
+     * @param target Name of the Channel to search for
+     */
+    Channel &findChannel(const std::string &target) const;
 };

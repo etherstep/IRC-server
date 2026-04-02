@@ -1,3 +1,4 @@
+#pragma once
 #include <asm-generic/socket.h>
 #include <err.h>
 #include <netinet/in.h>

@@ -60,24 +60,29 @@ SRCS_MAIN	:= \
 	Logger.cpp \
 	Server.cpp \
 	Socket.cpp \
-	Parser.cpp
+	Parser.cpp \
+	Client.cpp \
+	Utils.cpp \
+	Channel.cpp \
 
 # Combine all source files
 SRCS		:= \
 	$(SRCS_MAIN)
 
+# Source files needed for testing
+TEST_SRCS := \
+    tests/test_main.cpp \
+    tests/test_parser.cpp \
+    src/Parser.cpp  \
+
+TEST_EXEC := test_runner
+
 # ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ BUILD VARIABLES ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ #
 
 # Derived build variables
 OBJS				:= $(addprefix $(OBJ_DIR)/,$(SRCS:.cpp=.o))
-STALE_SRCS			:= $(shell \
-	for src in $(SRCS); do \
-		obj="$(OBJ_DIR)/$${src%.cpp}.o"; \
-		[ ! -f "$$obj" ] || [ "$(SRC_DIR)/$$src" -nt "$$obj" ] && echo "$$src"; \
-	done)
-TOTAL_SRCS			:= $(if $(STALE_SRCS),$(words $(STALE_SRCS)),1)
+TOTAL_SRCS			:= $(words $(SRCS))
 LOCK_FILE			:= $(OBJ_DIR)/.build.lock
-PROGRESS_SENTINEL	:= $(OBJ_DIR)/.progress_reset
 
 # git log variables
 GIT_HASH			:= $(shell git rev-parse --short HEAD)
@@ -97,13 +102,18 @@ CXXFLAGS += -DGIT_HASH=\"$(GIT_HASH)\"
 
 SHELL	:= /bin/bash
 
+# Adds a buld fingerprint as a macro available in
+CXXFLAGS += -DGIT_HASH=\"$(GIT_HASH)\"
+
 # Displays an animated progress bar with spinner, percentage,
 # and current file name during build
 define PROGRESS
 	IDX=$$(( $$(cat $(LOCK_FILE) 2>/dev/null || echo 0) + 1 )); \
 	echo $$IDX > $(LOCK_FILE); \
 	PCT=$$((IDX * 100 / $(TOTAL_SRCS))); \
+	PCT=$$((PCT > 100 ? 100 : PCT)); \
 	BAR_FILLED=$$((IDX * 20 / $(TOTAL_SRCS))); \
+	BAR_FILLED=$$((BAR_FILLED > 20 ? 20 : BAR_FILLED)); \
 	BAR_EMPTY=$$((20 - BAR_FILLED)); \
 	FILLED_BODY=$$((BAR_FILLED > 1 ? BAR_FILLED - 1 : 0)); \
 	FILLED=""; for ((i=0; i<FILLED_BODY; i++)); do FILLED+="━"; done; \
@@ -152,7 +162,7 @@ $(NAME): $(OBJS)
 	@touch $(OBJ_DIR)/.built
 	@echo ">$(BOLD)$(GREEN) $(NAME) successfully linked!$(RESET)"
 
-$(OBJ_DIR)/%.o: %.cpp | $(OBJ_DIR) $(DEP_DIR) print-version
+$(OBJ_DIR)/%.o: %.cpp | $(OBJ_DIR) $(DEP_DIR)
 	@( flock 9; $(PROGRESS) ) 9<>$(LOCK_FILE)
 	@$(CXX) $(CXXFLAGS) $(DEPFLAGS) -c $< -o $@ $(INC)
 
@@ -168,7 +178,6 @@ $(DEP_DIR): | $(OBJ_DIR)
 
 # git logs
 print-version:
-	@rm -rf $(LOCK_FILE)
 	@echo "$(BOLD)$(GIT_HEADER_COLOR)━━ Git Build Info ━━$(RESET)"
 	@echo "$(GIT_LABEL_COLOR)Branch:$(RESET)  $(GIT_BRANCH_COLOR)$(GIT_BRANCH)   $(GIT_REMOTE_STATUS)$(RESET)"
 	@echo "$(GIT_LABEL_COLOR)Author:$(RESET)  $(GIT_AUTHOR_COLOR)$(GIT_AUTHOR)$(RESET)"
@@ -178,6 +187,12 @@ print-version:
 debug: CXXFLAGS	+= $(DEBUG_FLAGS)
 debug: clean $(NAME)
 	@echo ">$(BOLD)$(CYAN)  Debug build completed!$(RESET)"
+
+test:
+	@echo "Compiling tests..."
+	$(CXX) $(CXXFLAGS) $(TEST_SRCS) -o $(TEST_EXEC) $(INC)
+	@echo "Running tests:\n"
+	./$(TEST_EXEC)
 
 # ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ CLEAN TARGETS ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ #
 
