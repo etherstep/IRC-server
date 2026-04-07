@@ -60,7 +60,8 @@ class Channel {
      * @param client Client based on which to create a new user.
      * @return Returns a reference to the newly created User.
      */
-    User &addUser(const Client &client);
+    std::optional<std::reference_wrapper<Channel::User>> addUser(
+        const Client &client);
 
     /**
      * @brief Tries to find User with <nickname> from _users. Returns a
@@ -86,7 +87,7 @@ class Channel {
      *
      * @param nickname User to be kicked (removed) from the Server
      */
-    void kickUser(const std::string nickname);
+    void tryKickUser(const std::string nickname);
 
     // TODO:4.3.2 Channel Invitation
     // For channels which have the invite-only flag set (See Section 4.2.2
@@ -150,7 +151,7 @@ class Channel {
     std::string   _key = "";
     std::string   _topic = "";
     std::string   _invitationMask = "";
-    unsigned int  _userLimit = 0;
+    uint32_t      _userLimit = UINT32_MAX;
     uint16_t      _channelFlags = 0;
 
     std::unordered_map<std::string, std::unique_ptr<Channel::User>> _users;

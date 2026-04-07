@@ -1,5 +1,6 @@
 #include "Channel.hpp"
 
+#include <optional>
 #include <stdexcept>
 
 Channel::Channel(const Server &server, const Client &client,
@@ -30,10 +31,9 @@ void Channel::setTopic(const std::string &topic) {
 }
 
 void Channel::setUserLimit(const unsigned int limit) {
-  if (_users.size() > limit)
-    // FIXME: This is here for debugging purposes. How to handle this edge case?
-    throw std::runtime_error(
-        "Channel already has more users than the limit is");
+  // if (_users.size() > limit)
+  // FIXME: How to handle this edge case?
+  // IRC server won't kick people out, but it won't allow new users to join.
   _userLimit = limit;
 }
 
@@ -46,16 +46,23 @@ unsigned int Channel::getUserCount(void) const {
 }
 
 // INFO: Utilities:
-Channel::User &Channel::addUser(const Client &client) {
+std::optional<std::reference_wrapper<Channel::User>> Channel::addUser(
+    const Client &client) {
+  if (_users.size() >= _userLimit) {
+    // FIXME:: Inform operator that server is full?
+    std::cout << "Users: " << _users.size() << "\n";
+    std::cout << "User limit: " << _userLimit << "\n";
+    return (std::nullopt);
+  }
   for (const auto &[key, value] : _users) {
-    if (value->getClient() == &client)
+    if (value->getClient() == &client) {
       // FIXME:: Inform operator that User already exists?
+      std::cout << key + " already on the server\n";
       return (*value);
+    }
   }
-  if (_users.size() < _userLimit) {
-    _users.try_emplace(client.getNickname(), std::make_unique<User>(client));
-    return (*_users.at(client.getNickname()));
-  }
+  _users.try_emplace(client.getNickname(), std::make_unique<User>(client));
+  return (*_users.at(client.getNickname()));
 }
 
 std::optional<std::reference_wrapper<Channel::User>> Channel::findUser(
@@ -83,17 +90,19 @@ bool Channel::isFlagOn(const ChannelFlag flag) {
 // INFO: Operator commands:
 void Channel::kickUser(Channel::User &target) {
   // FIXME: What else needs to be done when kicking? Notify Client or Server?
-
   auto it = _users.find(target.getNickName());
   if (it != _users.end())
     _users.erase(it);
 }
 
-void Channel::kickUser(const std::string nickname) {
+void Channel::tryKickUser(const std::string nickname) {
   std::optional<std::reference_wrapper<User>> target = findUser(nickname);
   if (target) {
     kickUser(target.value().get());
+    return;
   }
+  // FIXME: Inform operator that user not found?
+  std::cout << nickname + " not found on server\n";
 }
 
 void Channel::inviteUser(const std::string &nickname) {

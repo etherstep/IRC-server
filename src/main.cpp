@@ -21,10 +21,11 @@ int main(void) {
     channel->get().addUser(esko);
     std::cout << channel->get().getName() << std::endl;
     std::cout << channel->get().getUserCount() << std::endl;
-    channel->get().kickUser("esko");
+    channel->get().tryKickUser("esko");
+    channel->get().tryKickUser("esko");
     std::cout << channel->get().getName() << std::endl;
     std::cout << channel->get().getUserCount() << std::endl;
-    channel->get().kickUser("pekka");
+    channel->get().tryKickUser("pekka");
     std::cout << channel->get().getName() << std::endl;
     std::cout << channel->get().getUserCount() << std::endl;
   }
