@@ -315,12 +315,25 @@ void Server::processMessage(int32_t fd, std::optional<Command> const &cmd) {
   }
 }
 
-void Server::sendMessageToUser(const std::string &nickname,
-                               const std::string &message) {}
+void Server::sendMessageToUser(const std::string &from, const std::string &to,
+                               const std::string &message) {
+  std::unordered_map<std::string, int32_t> _nickToFd;
+  auto                                     it = _nickToFd.find(to);
+  if (it != _nickToFd.end()) {
+    replyMessage(it->second, message);
+  }
+  (void)from;
+}
 
-void Server::sendMessageWithCodeToUser(const std::string &nickname,
+void Server::sendMessageWithCodeToUser(const std::string &from,
+                                       const std::string &to,
                                        const int32_t      code,
-                                       const std::string &message) {}
+                                       const std::string &message) {
+  (void)from;
+  (void)to;
+  (void)message;
+  (void)code;
+}
 
 Server::~Server(void) {
   if (_epollFD != -1)
