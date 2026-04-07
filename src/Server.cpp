@@ -1,6 +1,9 @@
 #include "Server.hpp"
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <sys/epoll.h>
+#include <sys/socket.h>
 #include <sys/types.h>
 
 #include <cerrno>
@@ -11,6 +14,7 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -60,6 +64,9 @@ void Server::start(void) {
 // FIXME: What to do if adding clientSocket->getFD to polling fails?
 // FIXME: What to do if accept() fails?
 void Server::run(void) {
+  // FIXME: maybe move these somewhere else
+  struct sockaddr_in clientAddr;
+  socklen_t          addrLen = sizeof(clientAddr);
   while (true) {
     // LOG << "Polling for new connections. Clients: ";
     // LOG << _clients.size();
@@ -74,7 +81,8 @@ void Server::run(void) {
       if (_epollEvents[i].data.fd == _listenSocket.getFD()) {
         while (true) {  // loop until accept() returns -1 and
                         // errno is EAGAIN or EWOULDBLOCK
-          int32_t clientFD = accept(_listenSocket.getFD(), NULL, NULL);
+          int32_t clientFD = accept(_listenSocket.getFD(),
+                                    (struct sockaddr *)&clientAddr, &addrLen);
           if (clientFD == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
               break;
@@ -85,6 +93,10 @@ void Server::run(void) {
             LOG << "New connection accepted on FD: " << clientFD;
             _sockets.try_emplace(clientFD, Socket::makeClientSocket(clientFD));
             _clients.try_emplace(clientFD, Client());
+
+            // FIXME: new home?
+            std::string hostname = inet_ntoa(clientAddr.sin_addr);
+            _clients.at(clientFD).setHostname(hostname);
 
             struct epoll_event connectionPoll{};
             connectionPoll.events = EPOLLIN | EPOLLHUP | EPOLLRDHUP | EPOLLERR;
