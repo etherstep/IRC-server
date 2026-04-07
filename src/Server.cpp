@@ -319,6 +319,7 @@ Server::~Server(void) {
 void Server::replyMessage(int32_t fd, std::string const &msg) {
   Client &client = _clients.at(fd);
   client.appendToResponseBuffer(msg);
+  LOG << "sending message '" << msg << "' to client " << fd;
   modifyEpoll(fd, EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLRDHUP | EPOLLERR);
 }
 
