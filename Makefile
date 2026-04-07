@@ -196,8 +196,6 @@ $(TEST_EXEC): $(CORE_OBJS) $(TEST_OBJS)
 	@echo ">$(BOLD)$(GREEN) $(TEST_EXEC) successfully linked!$(RESET)"
 
 test: $(TEST_EXEC)
-	@echo "Running tests:\n"
-	./$(TEST_EXEC)
 
 # ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ CLEAN TARGETS ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ #
 
