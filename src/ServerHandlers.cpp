@@ -42,14 +42,14 @@ void Server::handlePrivMsg(int32_t fd, const Command &cmd) {
   if (cmd.params[0][0] == '#') {
     OptionalChannel channel = findChannel(cmd.params[0]);
     if (!channel) {
-      channel = newChannel(_clients.find(fd)->second, cmd.params[0]);
+      channel = newChannel(*sender, cmd.params[0]);
       _channels.try_emplace(cmd.params[0], &channel->get());
     }
     std::string fullMessage =
         prefix + " PRIVMSG " + cmd.params[0] + " :" + buffer + "\r\n";
     for (auto &member : channel->get().getUsers()) {
       if (!member.second || !member.second->getClient() ||
-          member.second->getClient() == &_clients.at(fd))
+          member.second->getClient() == &sender->get())
         continue;
       const auto &nick = member.second->getNickName();
       auto        it = _nickToFd.find(nick);
@@ -62,8 +62,12 @@ void Server::handlePrivMsg(int32_t fd, const Command &cmd) {
 
   // INFO: /msg
   OptionalClient target = findClientByName(cmd.params[0]);
-  if (!target)
-    return;
+  if (!target) {
+    std::string errStr =
+        sender->get().getNickname() + " " + cmd.params[0] + " :No such nick";
+    replyNumeric(fd, Numeric::ERR_NOSUCHNICK, errStr);
+  }
+  return;
   std::string targetNick(target->get().getNickname());
   std::string fullMessage =
       prefix + " PRIVMSG " + targetNick + " :" + buffer + "\r\n";
