@@ -57,17 +57,17 @@ void Server::handlePrivMsg(int32_t fd, const Command &cmd) {
         continue;
       replyMessage(it->second, fullMessage);
     }
-
-    // INFO: /msg
-  } else {
-    OptionalClient target = findClientByName(cmd.params[0]);
-    if (!target)
-      return;
-    std::string targetNick(target->get().getNickname());
-    std::string fullMessage =
-        prefix + " PRIVMSG " + targetNick + " :" + buffer + "\r\n";
-    replyMessage(_nickToFd.at(targetNick), fullMessage);
+    return;
   }
+
+  // INFO: /msg
+  OptionalClient target = findClientByName(cmd.params[0]);
+  if (!target)
+    return;
+  std::string targetNick(target->get().getNickname());
+  std::string fullMessage =
+      prefix + " PRIVMSG " + targetNick + " :" + buffer + "\r\n";
+  replyMessage(_nickToFd.at(targetNick), fullMessage);
 }
 
 // INFO: KICK
