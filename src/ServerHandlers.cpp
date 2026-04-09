@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include <ranges>
 
 #include "Client.hpp"
@@ -24,6 +26,49 @@ std::optional<std::reference_wrapper<Channel>> Server::findChannel(
   return (std::nullopt);
 }
 
+// INFO: PRIVMSG
+void Server::handlePrivMsg(int32_t fd, const Command &cmd) {
+  LOG << "handling PRIVMSG command";
+  std::string buffer;
+  for (auto &it : std::span(cmd.params).subspan(1))
+    buffer += it;
+  OptionalClient sender = _clients.at(fd);
+  if (!sender)
+    return;
+  std::string prefix = ":" + sender->get().getNickname() + "!~" +
+                       sender->get().getUsername() + "@" +
+                       sender->get().getHostname();
+  // INFO: channel
+  if (cmd.params[0][0] == '#') {
+    OptionalChannel channel = findChannel(cmd.params[0]);
+    if (!channel) {
+      channel = newChannel(_clients.find(fd)->second, cmd.params[0]);
+      _channels.try_emplace(cmd.params[0], &channel->get());
+    }
+    std::string fullMessage =
+        prefix + " PRIVMSG " + cmd.params[0] + " :" + buffer + "\r\n";
+    for (auto &member : channel->get().getUsers()) {
+      if (!member.second || !member.second->getClient() ||
+          member.second->getClient() == &_clients.at(fd))
+        continue;
+      const auto &nick = member.second->getNickName();
+      auto        it = _nickToFd.find(nick);
+      if (it == _nickToFd.end())
+        continue;
+      replyMessage(it->second, fullMessage);
+    }
+
+    // INFO: /msg
+  } else {
+    OptionalClient target = findClientByName(cmd.params[0]);
+    if (!target)
+      return;
+    std::string targetNick(target->get().getNickname());
+    std::string fullMessage =
+        prefix + " PRIVMSG " + targetNick + " :" + buffer + "\r\n";
+    replyMessage(_nickToFd.at(targetNick), fullMessage);
+  }
+}
 
 // INFO: KICK
 void Server::handleKick(int32_t fd, const Command &cmd) {
