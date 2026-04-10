@@ -130,12 +130,7 @@ class Server {
      */
     std::vector<int32_t> &getClients(void) const;
 
-    OptionalClient findClientByName(const std::string &name) {
-      auto it = _nickToFd.find(name);
-      if (it == _nickToFd.end())
-        return std::nullopt;
-      return std::ref(_clients.at(it->second));
-    }
+    OptionalClient findClientByName(const std::string &name);
     /**
      * @brief remove client and socket from the maps
      *

@@ -41,7 +41,7 @@ void Server::handlePrivMsg(int32_t fd, const Command &cmd) {
                        sender->get().getUsername() + "@" +
                        sender->get().getHostname();
   // INFO: channel
-  if (cmd.params[0][0] == '#') {
+  if (cmd.params[0][0] == '#' || cmd.params[0][0] == '&') {
     OptionalChannel channel = findChannel(cmd.params[0]);
     if (!channel) {
       channel = newChannel(*sender, cmd.params[0]);
@@ -107,14 +107,12 @@ void Server::handleKick(int32_t fd, const Command &cmd) {
         std::string       user;
         std::stringstream userStream(cmd.params[i]);
         while (std::getline(userStream, user, ',')) {
-          std::cout << user << std::endl;
           users.push_back(user);
         }
         break;
       }
       case 2: {
         comment = cmd.params[i];
-        std::cout << comment << std::endl;
         break;
       }
     }
@@ -192,6 +190,11 @@ void Server::handleJoin(int32_t fd, const Command &cmd) {
     LOG << clientToAdd.getNickname() + " trying to join channel " +
                channelNames[i];
     if (!channel.has_value()) {
+      if (cmd.params[0][0] != '#' && cmd.params[0][0] != '&') {
+        LOG << channelNames[i] + " bad channel mask";
+        replyNumeric(fd, Numeric::ERR_BADCHANMASK, ":" + cmd.params[0]);
+        return;
+      }
       LOG << channelNames[i] + " not found. Creating channel " +
                  channelNames[i];
       newChannel(clientToAdd, channelNames[i]);
@@ -204,22 +207,6 @@ void Server::handleJoin(int32_t fd, const Command &cmd) {
     }
   }
 }
-// void Server::handleJoin(int32_t fd, const Command &cmd) {
-//   LOG << "handling JOIN command";
-//   Client         &client = _clients.at(fd);
-//   OptionalChannel channel = findChannel(cmd.params[0]);
-//   if (!channel) {
-//     std::cout << "channel not found, creating new channel " << cmd.params[0]
-//               << '\n';
-//     channel = newChannel(_clients.find(fd)->second, cmd.params[0]);
-//     _channels.try_emplace(cmd.params[0], &channel->get());
-//   }
-//   channel->get().addUser(client);
-//   if (cmd.params.size() < 1) {
-//     replyNumeric(fd, Numeric::ERR_NEEDMOREPARAMS, ":Not enough parameters");
-//     return;
-//   }
-// }
 
 // INFO: QUIT
 void Server::handleQuit(int fd, const Command &cmd) {
