@@ -196,3 +196,11 @@ void Server::removeClient(int32_t fd) {
   _clients.erase(fd);
   _sockets.erase(fd);
 }
+
+
+OptionalClient Server::findClientByName(const std::string &name) {
+      auto it = _nickToFd.find(name);
+      if (it == _nickToFd.end())
+        return std::nullopt;
+      return std::ref(_clients.at(it->second));
+    }
