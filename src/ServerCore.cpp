@@ -64,6 +64,7 @@ void Server::run(void) {
   while (true) {
     // LOG << "Polling for new connections. Clients: ";
     // LOG << _clients.size();
+    removeEmptyChannels();
     _nEpollFDs = epoll_wait(_epollFD, _epollEvents, _backlogSize, POLL_TIME);
     for (int i = 0; i < _nEpollFDs; ++i) {
       // check for disconnected clients and remove them from the map
@@ -197,10 +198,9 @@ void Server::removeClient(int32_t fd) {
   _sockets.erase(fd);
 }
 
-
 OptionalClient Server::findClientByName(const std::string &name) {
-      auto it = _nickToFd.find(name);
-      if (it == _nickToFd.end())
-        return std::nullopt;
-      return std::ref(_clients.at(it->second));
-    }
+  auto it = _nickToFd.find(name);
+  if (it == _nickToFd.end())
+    return std::nullopt;
+  return std::ref(_clients.at(it->second));
+}

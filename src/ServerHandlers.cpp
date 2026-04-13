@@ -2,8 +2,10 @@
 
 #include <iostream>
 #include <span>
+#include <sstream>
 #include <string>
 
+#include "Channel.hpp"
 #include "Client.hpp"
 #include "Logger.hpp"
 #include "Server.hpp"
@@ -26,6 +28,24 @@ std::optional<std::reference_wrapper<Channel>> Server::findChannel(
     return (std::ref(*(*it).second));
   }
   return (std::nullopt);
+}
+
+void Server::removeEmptyChannels(void) {
+  std::vector<std::string> removedChannels;
+  const int count = std::erase_if(_channels, [&](const auto &channel) {
+    const auto &[channelName, channelPointer] = channel;
+    if (channelPointer->getUserCount() == 0) {
+      removedChannels.push_back(channelPointer->getName());
+      return (true);
+    }
+    return (false);
+  });
+  if (count) {
+    LOG << std::to_string(count) + " channels removed:\n";
+    for (auto &channelName : removedChannels) {
+      LOG << channelName + "\n";
+    }
+  }
 }
 
 // INFO: PRIVMSG
@@ -74,6 +94,76 @@ void Server::handlePrivMsg(int32_t fd, const Command &cmd) {
   std::string fullMessage =
       prefix + " PRIVMSG " + targetNick + " :" + buffer + "\r\n";
   replyMessage(_nickToFd.at(targetNick), fullMessage);
+}
+
+// INFO: PART
+void Server::handlePart(int32_t fd, const Command &cmd) {
+  LOG << "handling PART command";
+  if (cmd.params.size() < 1) {
+    replyNumeric(fd, Numeric::ERR_NEEDMOREPARAMS, ":Not enough parameters");
+    return;
+  }
+
+  //  FIXME: vv Throw here only for development/debugging purposes vv
+  if (cmd.params.size() > 2) {
+    throw std::runtime_error("Too many params for PART command");
+  }
+  // FIXME: ^^ Throw here only for development/debugging purposes ^^
+
+  std::vector<OptionalChannel> channels;
+  std::string                  reason;
+  for (size_t i = 0; i < cmd.params.size(); ++i) {
+    switch (i) {
+      case 0: {
+        std::string       channelName;
+        std::stringstream channelStream(cmd.params[i]);
+        while (std::getline(channelStream, channelName, ',')) {
+          OptionalChannel optChannel = findChannel(channelName);
+          if (!optChannel.has_value()) {
+            replyNumeric(fd, Numeric::ERR_NOSUCHCHANNEL, ":No such channel");
+            continue;
+          }
+          channels.push_back(optChannel);
+        }
+        break;
+      }
+      case 1: {
+        reason = cmd.params[i];
+        break;
+      }
+    }
+  }
+  if (channels.size() == 0) {
+    return;
+  }
+  auto it = _clients.find(fd);
+  if (it == _clients.end()) {
+    return;
+  }
+  OptionalClient client = it->second;
+  if (!client.has_value()) {
+    return;
+  }
+  std::string prefix = ":" + client->get().getNickname() + "!~" +
+                       client->get().getUsername() + "@" +
+                       client->get().getHostname();
+  for (auto &channel : channels) {
+    OptionalUser optUser = channel->get().findUser(client->get().getNickname());
+    if (!optUser.has_value()) {
+      replyNumeric(fd, Numeric::ERR_NOTONCHANNEL,
+                   ":You're not on that channel");
+      continue;
+    }
+    std::string partMessage =
+        prefix + " " + cmd.command + " " + channel->get().getName();
+    if (reason.size() > 0) {
+      partMessage += " :" + reason + "\r\n";
+    } else {
+      partMessage += "\r\n";
+    }
+    replyMessage(fd, partMessage);
+    channel->get().kickUser(optUser->get());
+  }
 }
 
 // INFO: KICK

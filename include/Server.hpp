@@ -58,6 +58,7 @@ class Server {
     using Function = void (Server::*)(int32_t, const Command &);
     void handlePassword(int32_t fd, const Command &cmd);
     void handleJoin(int32_t fd, const Command &cmd);
+    void handlePart(int32_t fd, const Command &cmd);
     void handleKick(int32_t fd, const Command &cmd);
     void handleNickname(int32_t fd, const Command &cmd);
     void handleUserJoin(int32_t fd, const Command &cmd);
@@ -67,6 +68,7 @@ class Server {
     inline static const std::unordered_map<std::string, Function> _functionMap =
         {{"PASS", &Server::handlePassword},
          {"JOIN", &Server::handleJoin},
+         {"PART", &Server::handlePart},
          {"KICK", &Server::handleKick},
          {"NICK", &Server::handleNickname},
          {"USER", &Server::handleUserJoin},
@@ -177,7 +179,6 @@ class Server {
                                    const std::string &message);
 
     void run(void);
-
     // INFO: Channel management:
     /**
      * @brief Creates a new Channel and emplaces it as a unique_ptr to _channels
@@ -202,4 +203,9 @@ class Server {
      */
     std::optional<std::reference_wrapper<Channel>> findChannel(
         const std::string &channelName) const;
+
+    /**
+     * @brief removes a channel from server is it's user count is 0.
+     */
+    void removeEmptyChannels(void);
 };
