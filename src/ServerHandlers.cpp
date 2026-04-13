@@ -270,9 +270,9 @@ void Server::handleJoin(int32_t fd, const Command &cmd) {
     replyNumeric(fd, Numeric::ERR_NEEDMOREPARAMS, ":Not enough parameters");
     return;
   }
+  Client &clientToAdd = _clients.at(fd);
   for (size_t i = 0; i < channelNames.size(); ++i) {
     OptionalChannel channel = findChannel(channelNames[i]);
-    Client         &clientToAdd = _clients.at(fd);
     LOG << clientToAdd.getNickname() + " trying to join channel " +
                channelNames[i];
     if (!channel.has_value()) {
