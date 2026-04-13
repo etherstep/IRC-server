@@ -274,7 +274,10 @@ void Server::handleJoin(int32_t fd, const Command &cmd) {
       }
       LOG << channelNames[i] + " not found. Creating channel " +
                  channelNames[i];
-      newChannel(clientToAdd, channelNames[i]);
+      Channel    &createdChannel = newChannel(clientToAdd, channelNames[i]);
+      std::string channelMessage = ":" + clientToAdd.getNickname() + " JOIN " +
+                                   createdChannel.getName() + "\r\n";
+      createdChannel.messageAllUsersOnChannel(channelMessage);
       continue;
     } else {
       LOG << channelNames[i] + " found. " + clientToAdd.getNickname() +
