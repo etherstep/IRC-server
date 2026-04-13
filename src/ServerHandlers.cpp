@@ -67,16 +67,8 @@ void Server::handlePrivMsg(int32_t fd, const Command &cmd) {
     }
     std::string fullMessage =
         prefix + " PRIVMSG " + cmd.params[0] + " :" + buffer + "\r\n";
-    for (auto &member : channel->get().getUsers()) {
-      if (!member.second || !member.second->getClient() ||
-          member.second->getClient() == &sender->get())
-        continue;
-      const auto &nick = member.second->getNickName();
-      auto        it = _nickToFd.find(nick);
-      if (it == _nickToFd.end())
-        continue;
-      replyMessage(it->second, fullMessage);
-    }
+    channel->get().messageAllUsersOnChannel(sender->get().getNickname(),
+                                            fullMessage);
     return;
   }
 
@@ -155,9 +147,9 @@ void Server::handlePart(int32_t fd, const Command &cmd) {
     if (reason.size() > 0) {
       partMessage += " :" + reason + "\r\n";
     } else {
-      partMessage += "\r\n";
+      partMessage += " :Bye bye!\r\n";
     }
-    replyMessage(fd, partMessage);
+    channel->get().messageAllUsersOnChannel(partMessage);
     channel->get().kickUser(optUser->get());
   }
 }
@@ -216,15 +208,14 @@ void Server::handleKick(int32_t fd, const Command &cmd) {
                        channel->get().getName());
       continue;
     }
-    int32_t     fdToKick = _nickToFd.at(users[i]);
-    std::string message =
+    std::string kickMessage =
         cmd.command + " " + channel->get().getName() + " " + users[i];
     if (comment.empty() == false) {
-      message += ": " + comment + "\r\n";
+      kickMessage += " :" + comment + "\r\n";
     } else {
-      message += "\r\n";
+      kickMessage += " :Bye bye!\r\n";
     }
-    replyMessage(fdToKick, message);
+    channel->get().messageAllUsersOnChannel(kickMessage);
     channel->get().kickUser(user->get());
   }
 }

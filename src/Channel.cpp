@@ -1,6 +1,10 @@
 #include "Channel.hpp"
 
+#include <cstdint>
+#include <string>
+
 #include "Logger.hpp"
+#include "Server.hpp"
 #include "Utils.hpp"
 
 Channel::Channel(Server &server, const Client &client, const std::string &name)
@@ -64,7 +68,7 @@ std::optional<std::reference_wrapper<Channel::User>> Channel::addUser(
     _server.sendMessageWithCodeToUser(
         client.getNickname(), client.getNickname(), Numeric::ERR_USERONCHANNEL,
         client.getNickname() + " " + this->getName() +
-            ": is already on channel");
+            " :is already on channel");
     LOG << client.getNickname() + " is already on channel " + this->getName() +
                "\n";
     // FIXME:: Print statements for debugging only
@@ -85,6 +89,39 @@ std::optional<std::reference_wrapper<Channel::User>> Channel::findUser(
   // FIXME:: Print statements for debugging only
   std::cout << nickname + " not found on the server\n";
   return std::nullopt;
+}
+
+void Channel::messageAllUsersOnChannel(const std::string &message) {
+  for (const auto &e : _users) {
+    _server.sendMessageToUser(e.first, e.first, message);
+  }
+}
+
+void Channel::messageAllUsersOnChannel(const std::string &message,
+                                       const int32_t      code) {
+  for (const auto &e : _users) {
+    _server.sendMessageWithCodeToUser(e.first, e.first, code, message);
+  }
+}
+
+void Channel::messageAllUsersOnChannel(const std::string &sender,
+                                       const std::string &message) {
+  for (const auto &e : _users) {
+    if (e.first == sender) {
+      continue;
+    }
+    _server.sendMessageToUser(e.first, e.first, message);
+  }
+}
+void Channel::messageAllUsersOnChannel(const std::string &sender,
+                                       const std::string &message,
+                                       const int32_t      code) {
+  for (const auto &e : _users) {
+    if (e.first == sender) {
+      continue;
+    }
+    _server.sendMessageWithCodeToUser(e.first, e.first, code, message);
+  }
 }
 
 void Channel::resetFlags(void) {

@@ -148,6 +148,41 @@ class Channel {
       return _users;
     }
 
+    /**
+     * @brief Send a <message> to all Users on channel.
+     *
+     * @param message Message to be sent to all users.
+     */
+    void messageAllUsersOnChannel(const std::string &message);
+
+    /**
+     * @brief Send a <message> with <code> to all users on channel.
+     *
+     * @param message Message to be sent to all users.
+     * @param code Code to be sent with the <message> to all users.
+     */
+    void messageAllUsersOnChannel(const std::string &message,
+                                  const int32_t      code);
+
+    /**
+     * @brief Send a <message> to all users except the <sender>.
+     *
+     * @param sender Nickname of the <sender> of <message>.
+     * @param message Message to be sent to all users on channel.
+     */
+    void messageAllUsersOnChannel(const std::string &sender,
+                                  const std::string &message);
+    /**
+     * @brief Send a <message> with <code> to all users except the <sender>.
+     *
+     * @param sender Nickname of the <sender> of <message>.
+     * @param message Message to be sent to all users on channel.
+     * @param code Code to be sent with the <message> to all users.
+     */
+    void messageAllUsersOnChannel(const std::string &sender,
+                                  const std::string &message,
+                                  const int32_t      code);
+
   private:
     Server     &_server;
     std::string _name = "";
