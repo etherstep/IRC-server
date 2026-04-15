@@ -2,6 +2,7 @@
 #include <sys/types.h>
 
 #include <cerrno>
+#include <csignal>
 #include <cstdint>
 #include <cstring>
 #include <iostream>
@@ -15,6 +16,8 @@
 #include "Parser.hpp"
 #include "Server.hpp"
 #include "Utils.hpp"
+
+volatile sig_atomic_t Server::_sigintReceived = false;
 
 Server::Server(const int32_t port, const uint32_t backlogSize,
                const std::string &pwd)
@@ -33,6 +36,7 @@ Server::Server(const int32_t port, const uint32_t backlogSize,
                  sizeof(sendBufSize)) < 0)
     throw std::runtime_error(
         "Failed to set server listen socket send buffer size");
+  initializeSignalHandling();
 }
 
 Server::~Server(void) {
@@ -61,7 +65,7 @@ void Server::start(void) {
 // FIXME: What to do if adding clientSocket->getFD to polling fails?
 // FIXME: What to do if accept() fails?
 void Server::run(void) {
-  while (true) {
+  while (_sigintReceived == false) {
     // LOG << "Polling for new connections. Clients: ";
     // LOG << _clients.size();
     removeEmptyChannels();
@@ -78,8 +82,8 @@ void Server::run(void) {
           // errno is EAGAIN or EWOULDBLOCK
           struct sockaddr_in client_addr;
           socklen_t          addr_len = sizeof(client_addr);
-          int32_t clientFD = accept(_listenSocket.getFD(),
-                                    (struct sockaddr *)&client_addr, &addr_len);
+          int32_t            clientFD = accept(_listenSocket.getFD(),
+                                               (struct sockaddr *)&client_addr, &addr_len);
           if (clientFD == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
               break;
@@ -205,4 +209,26 @@ OptionalClient Server::findClientByName(const std::string &name) {
   if (it == _nickToFd.end())
     return std::nullopt;
   return std::ref(_clients.at(it->second));
+}
+
+void Server::initializeSignalHandling(void) {
+  struct sigaction sa;
+  sigset_t         signalsToBlock;
+  std::memset(&sa, 0, sizeof(sa));
+  sigfillset(&signalsToBlock);
+  sa.sa_handler = &signalHandler;
+  sa.sa_mask = signalsToBlock;
+  if (sigaction(SIGINT, &sa, NULL) == -1) {
+    throw std::runtime_error("Failed initialize SIGINT handling");
+  }
+  std::memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = SIG_IGN;
+  if (sigaction(SIGQUIT, &sa, NULL) == -1) {
+    throw std::runtime_error("Failed to ignore SIGQUIT");
+  }
+}
+
+void Server::signalHandler(const int sig) {
+  LOG << "SIGINT (" << std::to_string(sig) << ") received";
+  _sigintReceived = true;
 }

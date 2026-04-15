@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <csignal>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -36,14 +37,17 @@ class Server {
   private:
     // INFO: Listening
     Socket   _listenSocket;
-    int32_t  _port;
-    uint32_t _backlogSize;
+    int32_t  _port{};
+    uint32_t _backlogSize{};
 
     // INFO: Polling
     struct epoll_event  _epoll{};
     struct epoll_event *_epollEvents{};
     int32_t             _epollFD = -1;
-    int32_t             _nEpollFDs;
+    int32_t             _nEpollFDs{};
+
+    // INFO: Signal handling
+    static volatile sig_atomic_t _sigintReceived;
 
     /**
      * @brief map of Client classes, each has its own Socket class
@@ -53,6 +57,11 @@ class Server {
     std::unordered_map<int32_t, Socket>      _sockets;
 
     void modifyEpoll(int32_t fd, uint32_t events);
+
+    /**
+     * @brief Initializes server signal handling.
+     */
+    void initializeSignalHandling(void);
 
     // functionality
     using Function = void (Server::*)(int32_t, const Command &);
@@ -92,6 +101,8 @@ class Server {
     void sendWelcomeMessages(int32_t fd);
 
     bool isNicknameInUse(std::string const &nick);
+
+    static void signalHandler(const int sig);
 
     // INFO: Channels:
     // std::vector<std::unique_ptr<Channel>>                     _channels;
