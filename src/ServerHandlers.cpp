@@ -125,7 +125,7 @@ void Server::handleTopic(int32_t fd, const Command &cmd) {
   }
 
   if (channel->get().isFlagOn(Channel::ChannelFlag::TOPIC_SET_BY_CHANOP_ONLY)) {
-    if (!user.isOperator()) {
+    if (!user->get().isOperator()) {
       replyNumeric(fd, Numeric::ERR_CHANOPRIVSNEEDED,
                    ":You're not channel operator");
       return;
