@@ -50,8 +50,9 @@ void Server::removeEmptyChannels(void) {
 }
 
 // INFO: PRIVMSG
-void Server::handlePrivMsg(int32_t fd, const Command &cmd) {
-  LOG << "handling PRIVMSG command";
+void Server::handleMsg(int32_t fd, const Command &cmd) {
+  bool privMsg = cmd.command == "PRIVMSG";
+  LOG << "handling " << (privMsg ? "PRIVMSG" : "NOTICE") << " command";
   std::string buffer;
   for (auto &it : std::span(cmd.params).subspan(1))
     buffer += it;
@@ -63,11 +64,15 @@ void Server::handlePrivMsg(int32_t fd, const Command &cmd) {
   if (cmd.params[0][0] == '#' || cmd.params[0][0] == '&') {
     OptionalChannel channel = findChannel(cmd.params[0]);
     if (!channel) {
-      channel = newChannel(*sender, cmd.params[0]);
-      _channels.try_emplace(cmd.params[0], &channel->get());
+      std::string errStr = sender->get().getNickname() + " " + cmd.params[0] +
+                           " :No such channel";
+      if (privMsg) {
+        replyNumeric(fd, Numeric::ERR_NOSUCHNICK, errStr);
+      }
+      return;
     }
-    std::string fullMessage =
-        prefix + " PRIVMSG " + cmd.params[0] + " :" + buffer;
+    std::string fullMessage = prefix + (privMsg ? " PRIVMSG " : " NOTICE ") +
+                              cmd.params[0] + " :" + buffer;
     channel->get().messageAllUsersOnChannel(sender->get().getNickname(),
                                             fullMessage);
     return;
@@ -78,11 +83,14 @@ void Server::handlePrivMsg(int32_t fd, const Command &cmd) {
   if (!target) {
     std::string errStr =
         sender->get().getNickname() + " " + cmd.params[0] + " :No such nick";
-    replyNumeric(fd, Numeric::ERR_NOSUCHNICK, errStr);
+    if (privMsg) {
+      replyNumeric(fd, Numeric::ERR_NOSUCHNICK, errStr);
+    }
     return;
   }
   std::string targetNick(target->get().getNickname());
-  std::string fullMessage = prefix + " PRIVMSG " + targetNick + " :" + buffer;
+  std::string fullMessage = prefix + (privMsg ? " PRIVMSG " : " NOTICE ") +
+                            targetNick + " :" + buffer;
   replyMessage(_nickToFd.at(targetNick), fullMessage);
 }
 
