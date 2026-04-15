@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 
 #include "Client.hpp"
@@ -84,7 +85,7 @@ std::optional<std::reference_wrapper<Channel::User>> Channel::tryAddUser(
             " :is already on channel");
     LOG << client.getNickname() + " is already on channel " + this->getName() +
                "\n";
-    return (*it->second);
+    return (std::nullopt);
   }
   return (addUser(client));
 }
