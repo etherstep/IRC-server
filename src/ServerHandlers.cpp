@@ -142,6 +142,58 @@ void Server::handleTopic(int32_t fd, const Command &cmd) {
   return;
 }
 
+// INFO: INVITE
+void Server::handleInvite(int32_t fd, const Command &cmd) {
+  LOG << "handling INVITE command";
+  if (cmd.params.size() < 2) {
+    replyNumeric(fd, Numeric::ERR_NEEDMOREPARAMS, "");
+    return;
+  }
+
+  OptionalChannel channel = findChannel(cmd.params[1]);
+  if (!channel) {
+    replyNumeric(fd, Numeric::ERR_NOSUCHCHANNEL, ":" + cmd.params[1]);
+    return;
+  }
+
+  const std::string &senderNick = _clients.at(fd).getNickname();
+  OptionalUser       senderUser = channel->get().findUser(senderNick);
+  if (!senderUser) {
+    replyNumeric(fd, Numeric::ERR_NOTONCHANNEL, "");
+    return;
+  }
+
+  if (channel->get().isFlagOn(Channel::ChannelFlag::INVITE_ONLY)) {
+    if (!senderUser->get().isOperator()) {
+      replyNumeric(fd, Numeric::ERR_CHANOPRIVSNEEDED, "");
+      return;
+    }
+  }
+
+  std::string targetNick = cmd.params[0];
+  if (channel->get().findUser(targetNick)) {
+    replyNumeric(fd, Numeric::ERR_USERONCHANNEL,
+                 targetNick + " " + channel->get().getName() +
+                     " :is already on channel");
+    return;
+  }
+  // FIXME: 19:33 -!- No such nick: No such nick/channel
+
+  //  antti67 has been invited to #kannu by usva69
+  //  OptionalClient senderClient = findClientByName(senderNick);
+  std::string channelName = channel->get().getName();
+  // std::string    prefix = senderClient->get().generatePrefix();
+  // std::string messageToSender = prefix + " " + targetNick + " " +
+  // channelName;
+  //
+  // replyNumeric(fd, Numeric::RPL_INVITING, messageToSender);
+
+  std::string messageToTarget =
+      ":" + senderNick + " INVITE " + targetNick + " :" + channelName;
+  sendMessageToUser(senderNick, targetNick, messageToTarget);
+  return;
+}
+
 // INFO: PART
 void Server::handlePart(int32_t fd, const Command &cmd) {
   LOG << "handling PART command";
