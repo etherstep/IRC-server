@@ -199,6 +199,7 @@ void Server::modifyEpoll(int32_t fd, uint32_t events) {
 }
 
 void Server::removeClient(int32_t fd) {
+  LOG << "Removing client " << fd;
   epoll_ctl(_epollFD, EPOLL_CTL_DEL, fd, NULL);
   _clients.erase(fd);
   _sockets.erase(fd);

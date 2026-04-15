@@ -73,7 +73,6 @@ class Server {
     void handleUserJoin(int32_t fd, const Command &cmd);
     void handleCapNegotiation(int32_t fd, const Command &cmd);
     void handleMsg(int32_t fd, const Command &cmd);
-    void handlePrivMsg(int32_t fd, const Command &cmd);
     void handleTopic(int32_t fd, const Command &cmd);
     void handleQuit(int32_t fd, const Command &cmd);
     void handlePing(int32_t fd, const Command &cmd);

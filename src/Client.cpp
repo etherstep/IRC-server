@@ -50,6 +50,11 @@ void Client::appendToRecvBuffer(std::string const &input) {
 
 void Client::appendToResponseBuffer(std::string const &msg) {
   _responseBuffer.append(msg);
+  if (_responseBuffer.length() > MAX_RECV_BUFFER) {
+    _responseBuffer.clear();
+    LOG << "Client '" << _nick
+        << "' exceeded receive buffer size, erased buffer";
+  }
 }
 
 std::string &Client::getResponseBuffer() {
