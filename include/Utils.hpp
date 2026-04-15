@@ -14,6 +14,7 @@ constexpr int32_t RPL_YOURHOST = 2;
 constexpr int32_t RPL_CREATED = 3;
 constexpr int32_t RPL_MYINFO = 4;
 // Replies
+constexpr int32_t RPL_UMODEIS = 221;
 constexpr int32_t RPL_TOPIC = 332;
 constexpr int32_t RPL_NAMERPLY = 353;
 constexpr int32_t RPL_ENDOFNAMES = 366;

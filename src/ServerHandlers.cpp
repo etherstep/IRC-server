@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include <cstdlib>
 #include <iostream>
 #include <span>
 #include <sstream>
@@ -294,4 +295,21 @@ void Server::handleQuit(int fd, const Command &cmd) {
   replyMessage(fd, errorMsg);
   client.setShouldClose(true);
   LOG << "Client " << fd << " initiated QUIT sequence.";
+}
+
+void Server::handlePing(int32_t fd, const Command &cmd) {
+  std::string msg = ":" SERVER_NAME " PONG " SERVER_NAME;
+  if (!cmd.params.empty()) {
+    msg += " " + cmd.params[0];
+  }
+  replyMessage(fd, msg);
+}
+
+void Server::handleMode(int32_t fd, const Command &cmd) {
+  // TODO: set something in Client to indicate mode
+  std::string msg = "";
+  if (cmd.params.size() >= 2) {
+    msg = cmd.params[1];
+  }
+  replyNumeric(fd, Numeric::RPL_UMODEIS, msg);
 }

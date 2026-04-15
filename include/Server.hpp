@@ -65,16 +65,22 @@ class Server {
     void handleCapNegotiation(int32_t fd, const Command &cmd);
     void handlePrivMsg(int32_t fd, const Command &cmd);
     void handleQuit(int32_t fd, const Command &cmd);
+    void handlePing(int32_t fd, const Command &cmd);
+    void handleMode(int32_t fd, const Command &cmd);
     inline static const std::unordered_map<std::string, Function> _functionMap =
-        {{"PASS", &Server::handlePassword},
-         {"JOIN", &Server::handleJoin},
-         {"PART", &Server::handlePart},
-         {"KICK", &Server::handleKick},
-         {"NICK", &Server::handleNickname},
-         {"USER", &Server::handleUserJoin},
-         {"CAP", &Server::handleCapNegotiation},
-         {"PRIVMSG", &Server::handlePrivMsg},
-         {"QUIT", &Server::handleQuit}};
+        {
+            {"PASS", &Server::handlePassword},
+            {"JOIN", &Server::handleJoin},
+            {"PART", &Server::handlePart},
+            {"KICK", &Server::handleKick},
+            {"NICK", &Server::handleNickname},
+            {"USER", &Server::handleUserJoin},
+            {"CAP", &Server::handleCapNegotiation},
+            {"PRIVMSG", &Server::handlePrivMsg},
+            {"QUIT", &Server::handleQuit},
+            {"PING", &Server::handlePing},
+            {"MODE", &Server::handleMode},
+    };
 
     // formulate responses
     void replyMessage(int32_t fd, std::string const &msg);

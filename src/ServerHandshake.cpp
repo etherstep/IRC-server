@@ -9,13 +9,12 @@ bool Server::passwordIsCorrect(const std::string &pwd) {
 
 void Server::sendWelcomeMessages(int32_t fd) {
   Client     &client = _clients.at(fd);
-  std::string clientMask =
-      client.getNickname() + "!" + client.getUsername() + "@localhost";
+  std::string clientMask = client.generatePrefix().substr(1);
   replyNumeric(fd, Numeric::RPL_WELCOME,
-               ":Welcome to IRC, " + clientMask + "!");
+               ":Welcome to the Internet Relay Network " + clientMask);
   replyNumeric(fd, Numeric::RPL_YOURHOST,
                std::string(":Your host is ") + SERVER_NAME +
-                   "running version " + GIT_HASH);
+                   " running version " + GIT_HASH);
   replyNumeric(fd, Numeric::RPL_CREATED, ":This Server was created today");
   replyNumeric(fd, Numeric::RPL_MYINFO,
                std::string(SERVER_NAME) + " " + GIT_HASH + " io itkol");
