@@ -36,7 +36,7 @@ Server::Server(const int32_t port, const uint32_t backlogSize,
                  sizeof(sendBufSize)) < 0)
     throw std::runtime_error(
         "Failed to set server listen socket send buffer size");
-  intializeSignalHandling();
+  initializeSignalHandling();
 }
 
 Server::~Server(void) {
@@ -211,7 +211,7 @@ OptionalClient Server::findClientByName(const std::string &name) {
   return std::ref(_clients.at(it->second));
 }
 
-void Server::intializeSignalHandling(void) {
+void Server::initializeSignalHandling(void) {
   struct sigaction sa;
   sigset_t         signalsToBlock;
   std::memset(&sa, 0, sizeof(sa));

@@ -61,7 +61,7 @@ class Server {
     /**
      * @brief Initializes server signal handling.
      */
-    void intializeSignalHandling(void);
+    void initializeSignalHandling(void);
 
     // functionality
     using Function = void (Server::*)(int32_t, const Command &);
