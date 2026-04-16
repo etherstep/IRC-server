@@ -207,6 +207,7 @@ void Server::handlePart(int32_t fd, const Command &cmd) {
     }
     channel->get().messageAllUsersOnChannel(partMessage);
     channel->get().kickUser(optUser->get());
+    client->get().removeChannel(channel->get().getName());
   }
 }
 
@@ -275,6 +276,7 @@ void Server::handleKick(int32_t fd, const Command &cmd) {
     }
     channel->get().messageAllUsersOnChannel(kickMessage);
     channel->get().kickUser(user->get());
+    clientToKick->get().removeChannel(channel->get().getName());
   }
 }
 
@@ -332,6 +334,7 @@ void Server::handleJoin(int32_t fd, const Command &cmd) {
       LOG << channelNames[i] + " not found. Creating channel";
       Channel &createdChannel = newChannel(clientToAdd, channelNames[i]);
       createdChannel.messageNewUserJoining(clientToAdd);
+      clientToAdd.addChannel(channelNames[i]);
       continue;
     } else {
       LOG << clientToAdd.getNickname() + " joining channel " + channelNames[i];
@@ -339,6 +342,7 @@ void Server::handleJoin(int32_t fd, const Command &cmd) {
       OptionalUser user = channel->get().tryAddUser(clientToAdd, key);
       if (user.has_value()) {
         channel->get().messageNewUserJoining(clientToAdd);
+        clientToAdd.addChannel(channelNames[i]);
       }
     }
   }

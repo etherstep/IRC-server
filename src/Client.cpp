@@ -4,9 +4,11 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#include <algorithm>
 #include <cerrno>
 #include <string>
 
+#include "Channel.hpp"
 #include "Logger.hpp"
 #include "Server.hpp"
 #include "irc.hpp"
@@ -149,6 +151,20 @@ const std::string &Client::getHostname() const {
 
 void Client::setHostname(std::string const &name) {
   _hostname = name;
+}
+
+const std::vector<std::string> Client::getChannels(void) const {
+  return (_channels);
+}
+
+void Client::addChannel(const std::string &channel) {
+  _channels.push_back(channel);
+}
+
+void Client::removeChannel(const std::string &channelToRemove) {
+  std::erase_if(_channels, [&](const std::string &channel) {
+    return (channel == channelToRemove);
+  });
 }
 
 const std::string Client::generatePrefix() const {
