@@ -142,6 +142,55 @@ void Server::handleTopic(int32_t fd, const Command &cmd) {
   return;
 }
 
+// INFO: INVITE
+void Server::handleInvite(int32_t fd, const Command &cmd) {
+  LOG << "handling INVITE command";
+  if (cmd.params.size() < 2) {
+    replyNumeric(fd, Numeric::ERR_NEEDMOREPARAMS, ":Not enough parameters");
+    return;
+  }
+
+  OptionalChannel channel = findChannel(cmd.params[1]);
+  if (!channel) {
+    replyNumeric(fd, Numeric::ERR_NOSUCHCHANNEL, ":" + cmd.params[1]);
+    return;
+  }
+
+  const std::string &senderNick = _clients.at(fd).getNickname();
+  OptionalUser       senderUser = channel->get().findUser(senderNick);
+  if (!senderUser) {
+    replyNumeric(fd, Numeric::ERR_NOTONCHANNEL, "You're not on that channel");
+    return;
+  }
+
+  if (channel->get().isFlagOn(Channel::ChannelFlag::INVITE_ONLY)) {
+    if (!senderUser->get().isOperator()) {
+      replyNumeric(fd, Numeric::ERR_CHANOPRIVSNEEDED,
+                   "You're not channel operator");
+      return;
+    }
+  }
+
+  const std::string &targetNick = cmd.params[0];
+  const std::string &channelName = channel->get().getName();
+  if (channel->get().findUser(targetNick)) {
+    replyNumeric(fd, Numeric::ERR_USERONCHANNEL,
+                 targetNick + " " + channelName + " :is already on channel");
+    return;
+  }
+
+  const std::string &messageToSender = targetNick + " :" + channelName;
+  replyNumeric(fd, Numeric::RPL_INVITING, messageToSender);
+
+  OptionalClient     senderClient = findClientByName(senderNick);
+  const std::string &prefix = senderClient->get().generatePrefix();
+  const std::string &messageToTarget =
+      prefix + " INVITE " + targetNick + " :" + channelName;
+  sendMessageToUser(senderNick, targetNick, messageToTarget);
+  sendMessageToUser(senderNick, senderNick, messageToTarget);
+  return;
+}
+
 // INFO: PART
 void Server::handlePart(int32_t fd, const Command &cmd) {
   LOG << "handling PART command";
