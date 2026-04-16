@@ -3,7 +3,6 @@
 #include <pwd.h>
 #include <unistd.h>
 
-#include <chrono>
 #include <iostream>
 #include <string>
 #include <unordered_map>
@@ -12,9 +11,6 @@
 #define MAX_RECV_BUFFER 8192
 #define MAX_SEND_BUFFER 1048576
 #define MAX_MESSAGE_LEN 510
-#define PING_TIMEOUT 300
-
-using TimeStamp = std::chrono::time_point<std::chrono::system_clock>;
 
 class Client {
   public:
@@ -90,14 +86,6 @@ class Client {
     void setPasswordOK(bool b);
     bool isPasswordOK();
 
-    TimeStamp getLastPingRecv();
-    TimeStamp getLastPingSent();
-    TimeStamp getLastMsgRecv();
-    void      setPingRecv(TimeStamp t);
-    void      setPingSent(TimeStamp t);
-    void      setLastMsgRecv(TimeStamp t);
-    bool      isWaitingForPong();
-
   private:
     std::string              _responseBuffer;
     std::string              _recvBuffer;
@@ -107,10 +95,6 @@ class Client {
     std::string              _hostname;
     bool                     _passwordOK;
     bool                     _shouldClose;
-    bool                     _waitingForPong;
     State                    _state;
     std::vector<std::string> _channels;
-    TimeStamp                _lastMsgRecv;
-    TimeStamp                _lastPingRecv;
-    TimeStamp                _lastPingSent;
 };

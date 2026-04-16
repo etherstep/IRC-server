@@ -147,6 +147,7 @@ void Server::run(void) {
         } else if (!(errno == EAGAIN || errno == EWOULDBLOCK)) {
           LOG << "Fatal read error";
           startDisconnect(_epollEvents[i].data.fd, "Read error", false);
+          removeClient(_epollEvents[i].data.fd);
         }
       } else if (_epollEvents[i].events & EPOLLOUT) {  // outgoing data
         int32_t     fd = _epollEvents[i].data.fd;
@@ -186,7 +187,6 @@ void Server::processMessage(int32_t fd, std::optional<Command> const &cmd) {
   if (cmd.has_value()) {
     auto it = _functionMap.find(cmd->command);
     if (it != _functionMap.end()) {
-      client.setLastMsgRecv(std::chrono::system_clock::now());
       auto handler = it->second;
       (this->*handler)(fd, *cmd);
     } else {
