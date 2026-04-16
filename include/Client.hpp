@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include <iostream>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -49,6 +50,26 @@ class Client {
     const std::string &getHostname() const;
     void               setHostname(std::string const &name);
 
+    /**
+     * @brief Returns a vector of channel names Client is on.
+     */
+    const std::vector<std::string> getChannels(void) const;
+
+    /**
+     * @brief Adds a channel name to a vector of channel names Client is on.
+     *
+     * @param channel Channel name to be added.
+     */
+    void addChannel(const std::string &channel);
+
+    /**
+     * @brief Removes a channel name from a vector of channel names Client is on
+     * if it's found.
+     *
+     * @param channelToRemove Channel name to remove from vector if it's found.
+     */
+    void removeChannel(const std::string &channelToRemove);
+
     const std::string generatePrefix() const;
 
     bool isRegistered();
@@ -64,13 +85,14 @@ class Client {
     bool isPasswordOK();
 
   private:
-    std::string _responseBuffer;
-    std::string _recvBuffer;
-    std::string _nick;
-    std::string _username;
-    std::string _realname;
-    std::string _hostname;
-    bool        _passwordOK;
-    bool        _shouldClose;
-    State       _state;
+    std::string              _responseBuffer;
+    std::string              _recvBuffer;
+    std::string              _nick;
+    std::string              _username;
+    std::string              _realname;
+    std::string              _hostname;
+    bool                     _passwordOK;
+    bool                     _shouldClose;
+    State                    _state;
+    std::vector<std::string> _channels;
 };
