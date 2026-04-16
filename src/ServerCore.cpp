@@ -27,6 +27,7 @@ Server::Server(const int32_t port, const uint32_t backlogSize,
     : _listenSocket(Socket::makeListeningSocket(port)),
       _port(port),
       _backlogSize(backlogSize),
+      _lastPingCheck(std::chrono::system_clock::now()),
       _pwd(pwd) {
   int sendBufSize = SNDBUF_SIZE;
   int receiveBufSize = RCVBUF_SIZE;
@@ -71,6 +72,7 @@ void Server::run(void) {
   while (_sigintReceived == false) {
     // LOG << "Polling for new connections. Clients: ";
     // LOG << _clients.size();
+    TimeStamp now = std::chrono::system_clock::now();
     removeEmptyChannels();
     _nEpollFDs = epoll_wait(_epollFD, _epollEvents, _backlogSize, POLL_TIME);
     for (int i = 0; i < _nEpollFDs; ++i) {
@@ -171,6 +173,9 @@ void Server::run(void) {
         }
       }
     }
+    if (now - _lastPingCheck > std::chrono::seconds(5)) {
+      pingInactiveClients(now);
+    }
   }
 }
 
@@ -262,5 +267,26 @@ void Server::startDisconnect(int32_t fd, std::string reason,
   modifyEpoll(fd, EPOLLOUT | EPOLLHUP | EPOLLERR);
   if (!socketExists) {
     removed.clearResponseBuffer();
+  }
+}
+
+void Server::pingInactiveClients(TimeStamp now) {
+  for (auto &[fd, client] : _clients) {
+    if (client.shouldClose()) {
+      continue;
+    }
+    if (now - client.getLastMsgRecv() > std::chrono::seconds(CLIENT_TIMEOUT)) {
+      startDisconnect(fd, "Client timed out", true);
+      continue;
+    }
+    if (now - client.getLastMsgRecv() >
+            std::chrono::seconds(CLIENT_PING_START) &&
+        now - client.getLastPingSent() >
+            std::chrono::seconds(CLIENT_PING_INTERVAL)) {
+      LOG << "Possibly inactive client " << fd;
+      std::string msg = std::string("PING ") + SERVER_NAME;
+      replyMessage(fd, msg);
+      client.setPingSent(now);
+    }
   }
 }

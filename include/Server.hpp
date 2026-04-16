@@ -25,6 +25,9 @@
 #define RCVBUF_SIZE 65536
 #define SNDBUF_SIZE 65536
 #define POLL_TIME 1000
+#define CLIENT_PING_START 100
+#define CLIENT_PING_INTERVAL 50
+#define CLIENT_TIMEOUT 200
 #define SERVER_NAME "usvaIRC"
 
 class Client;
@@ -32,13 +35,15 @@ class Channel;
 
 using OptionalClient = std::optional<std::reference_wrapper<Client>>;
 using OptionalChannel = std::optional<std::reference_wrapper<Channel>>;
+using TimeStamp = std::chrono::time_point<std::chrono::system_clock>;
 
 class Server {
   private:
     // INFO: Listening
-    Socket   _listenSocket;
-    int32_t  _port{};
-    uint32_t _backlogSize{};
+    Socket    _listenSocket;
+    int32_t   _port{};
+    uint32_t  _backlogSize{};
+    TimeStamp _lastPingCheck;
 
     // INFO: Polling
     struct epoll_event  _epoll{};
@@ -89,6 +94,7 @@ class Server {
             {"PRIVMSG", &Server::handleMsg},
             {"QUIT", &Server::handleQuit},
             {"PING", &Server::handlePing},
+            {"PONG", &Server::handlePing},
             {"MODE", &Server::handleMode},
             {"TOPIC", &Server::handleTopic},
             {"NOTICE", &Server::handleMsg},
@@ -233,4 +239,11 @@ class Server {
      * @brief starts the process of removing a client from the server.
      */
     void startDisconnect(int32_t fd, std::string reason, bool socketExists);
+
+    /**
+     * @brief Loops through all clients, sends PING to those who have been
+     * inactive longer than CLIENT_PING_INTERVAL seconds, and starts the removal
+     * of those that have been inactive for longer than CLIENT_TIMEOUT seconds.
+     */
+    void pingInactiveClients(TimeStamp now);
 };

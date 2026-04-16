@@ -6,10 +6,7 @@
 
 #include <algorithm>
 #include <cerrno>
-<<<<<<< Updated upstream
-=======
 #include <chrono>
->>>>>>> Stashed changes
 #include <cstdlib>
 #include <string>
 
@@ -25,7 +22,9 @@ Client::Client(struct sockaddr_in *addr)
       _passwordOK(false),
       _shouldClose(false),
       _waitingForPong(false),
-      _state(State::CONNECTED) {
+      _state(State::CONNECTED),
+      _lastMsgRecv(std::chrono::system_clock::now()),
+      _lastPingSent(std::chrono::system_clock::now()) {
   char ip[INET_ADDRSTRLEN] = {};
   if (inet_ntop(AF_INET, &(addr->sin_addr), ip, sizeof(ip))) {
     _hostname = ip;
@@ -189,10 +188,6 @@ const std::string Client::generatePrefix() const {
           this->getHostname());
 }
 
-TimeStamp Client::getLastPingRecv() {
-  return _lastPingRecv;
-}
-
 TimeStamp Client::getLastPingSent() {
   return _lastPingSent;
 }
@@ -201,11 +196,8 @@ TimeStamp Client::getLastMsgRecv() {
   return _lastPingSent;
 }
 
-void Client::setPingRecv(TimeStamp t) {
-  _lastPingRecv = t;
-}
-
 void Client::setPingSent(TimeStamp t) {
+  setWaitingForPong(true);
   _lastPingSent = t;
 }
 
@@ -215,4 +207,8 @@ void Client::setLastMsgRecv(TimeStamp t) {
 
 bool Client::isWaitingForPong() {
   return _waitingForPong;
+}
+
+void Client::setWaitingForPong(bool b) {
+  _waitingForPong = b;
 }
