@@ -163,7 +163,7 @@ void Server::handleInvite(int32_t fd, const Command &cmd) {
     return;
   }
 
-  if (channel->get().isFlagOn(Channel::ChannelFlag::INVITE_ONLY)) {
+  if (channel->get().isModeOn(Channel::ChannelMode::INVITE_ONLY)) {
     if (!senderUser->get().isOperator()) {
       replyNumeric(fd, Numeric::ERR_CHANOPRIVSNEEDED,
                    "You're not channel operator");
