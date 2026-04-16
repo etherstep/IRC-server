@@ -15,6 +15,8 @@ constexpr int32_t RPL_CREATED = 3;
 constexpr int32_t RPL_MYINFO = 4;
 // Replies
 constexpr int32_t RPL_UMODEIS = 221;
+constexpr int32_t RPL_CHANNELMODEIS = 324;
+constexpr int32_t RPL_CREATIONTIME = 329;
 constexpr int32_t RPL_NOTOPIC = 331;
 constexpr int32_t RPL_TOPIC = 332;
 constexpr int32_t RPL_TOPICWHOTIME = 333;
@@ -41,4 +43,5 @@ constexpr int32_t ERR_CHANNELISFULL = 471;
 constexpr int32_t ERR_BADCHANNELKEY = 475;
 constexpr int32_t ERR_BADCHANMASK = 476;
 constexpr int32_t ERR_CHANOPRIVSNEEDED = 482;
+constexpr int32_t ERR_USERSDONTMATCH = 502;
 }  // namespace Numeric

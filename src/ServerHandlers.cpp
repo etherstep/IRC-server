@@ -124,7 +124,7 @@ void Server::handleTopic(int32_t fd, const Command &cmd) {
     return;
   }
 
-  if (channel->get().isFlagOn(Channel::ChannelFlag::TOPIC_SET_BY_CHANOP_ONLY)) {
+  if (channel->get().isModeOn(Channel::ChannelMode::TOPIC_SET_BY_CHANOP_ONLY)) {
     if (!user->get().isOperator()) {
       replyNumeric(fd, Numeric::ERR_CHANOPRIVSNEEDED,
                    ":You're not channel operator");
@@ -163,7 +163,7 @@ void Server::handleInvite(int32_t fd, const Command &cmd) {
     return;
   }
 
-  if (channel->get().isFlagOn(Channel::ChannelFlag::INVITE_ONLY)) {
+  if (channel->get().isModeOn(Channel::ChannelMode::INVITE_ONLY)) {
     if (!senderUser->get().isOperator()) {
       replyNumeric(fd, Numeric::ERR_CHANOPRIVSNEEDED,
                    "You're not channel operator");
@@ -419,10 +419,39 @@ void Server::handlePing(int32_t fd, const Command &cmd) {
 }
 
 void Server::handleMode(int32_t fd, const Command &cmd) {
-  // TODO: set something in Client to indicate mode
-  std::string msg = "";
-  if (cmd.params.size() >= 2) {
-    msg = cmd.params[1];
+  Client     &client = _clients.at(fd);
+  std::string nickname = client.getNickname();
+
+  //  FIXME: vv Throw here only for development/debugging purposes vv
+  if (cmd.params.size() > 2) {
+    throw std::runtime_error("Too many params for MODE command");
   }
-  replyNumeric(fd, Numeric::RPL_UMODEIS, msg);
+  // FIXME: ^^ Throw here only for development/debugging purposes ^^
+
+  if (cmd.params.size() < 1) {
+    replyNumeric(fd, Numeric::ERR_NEEDMOREPARAMS, ":Not enough parameters");
+    return;
+  }
+  OptionalChannel channel = findChannel(cmd.params[0]);
+  if (!channel) {
+    replyNumeric(fd, Numeric::ERR_NOSUCHCHANNEL, ":No such channel");
+    return;
+  }
+  if (cmd.params.size() == 1) {
+    // FIXME: Format message correctly.
+    replyNumeric(fd, Numeric::RPL_CHANNELMODEIS, "");
+    // FIXME: Server's SHOULD return RPL_CREATIONTIME after RPL_CHANNELMODEIS
+    replyNumeric(fd, Numeric::RPL_CREATIONTIME, "");
+    return;
+  } else {
+    OptionalUser user = channel->get().findUser(nickname);
+    if (!user || user->get().isOperator() == false) {
+      replyNumeric(fd, Numeric::ERR_CHANOPRIVSNEEDED,
+                   ":You're not channel operator");
+      return;
+    }
+    // FIXME: Parse mode message and apply to channel!
+    // Iterate through the parsed modes and use:
+    // channel->get().setMode(const ChannelMode mode, const bool status)
+  }
 }

@@ -58,7 +58,7 @@ unsigned int Channel::getUserCount(void) const {
 // INFO: Utilities:
 std::optional<std::reference_wrapper<Channel::User>> Channel::tryAddUser(
     const Client &client, const std::string &key) {
-  if (isFlagOn(ChannelFlag::KEY_PROTECTED)) {
+  if (isModeOn(ChannelMode::KEY_PROTECTED)) {
     if (key != _key) {
       _server.sendMessageWithCodeToUser(
           client.getNickname(), client.getNickname(),
@@ -172,16 +172,28 @@ void Channel::messageNewUserJoining(Client &clientToAdd) {
                                     endOfNamesReply);
 }
 
-void Channel::resetFlags(void) {
-  _channelFlags = 0;
+void Channel::resetModes(void) {
+  _channelModes = 0;
 }
 
-void Channel::toggleFlag(const ChannelFlag flag) {
-  _channelFlags ^= static_cast<uint16_t>(flag);
+void Channel::setMode(const ChannelMode mode, const bool status) {
+  if (status == false) {
+    if (isModeOn(mode)) {
+      toggleMode(mode);
+    }
+  } else {
+    if (isModeOn(mode) == false) {
+      toggleMode(mode);
+    }
+  }
 }
 
-bool Channel::isFlagOn(const ChannelFlag flag) {
-  return (_channelFlags & static_cast<uint16_t>(flag));
+void Channel::toggleMode(const ChannelMode flag) {
+  _channelModes ^= static_cast<uint16_t>(flag);
+}
+
+bool Channel::isModeOn(const ChannelMode flag) {
+  return (_channelModes & static_cast<uint16_t>(flag));
 }
 
 void Channel::tryKickUser(const std::string nickname) {

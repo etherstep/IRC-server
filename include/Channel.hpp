@@ -14,7 +14,7 @@ class Server;
 class Channel {
   public:
     class User;
-    enum class ChannelFlag : uint16_t;
+    enum class ChannelMode : uint16_t;
 
     /**
      * @brief Constructs a new channel with name <name> and sets <client> as a
@@ -119,16 +119,17 @@ class Channel {
     void inviteUser(const std::string &nickname);
 
     /**
-     * @brief Toggles a flag on the channel.
+     * @brief Sets a channel <mode> on or off base on the given <status>
      *
-     * @param flag Channel::ChannelFlag to be toggled.
+     * @param mode ChannelMode to be set
+     * @param status Boolean true/false to set the mode to.
      */
-    void toggleFlag(const ChannelFlag flag);
+    void setMode(const ChannelMode mode, const bool status);
 
     /**
      * @brief Resets all Channel flags.
      */
-    void resetFlags(void);
+    void resetModes(void);
 
     /**
      * @brief Checks if a givent flag is on or off.
@@ -136,7 +137,7 @@ class Channel {
      * @param flag Channel::ChannelFlag to be checked.
      * @return Returns true if given flag is on. Otherwise return false.
      */
-    bool isFlagOn(const ChannelFlag flag);
+    bool isModeOn(const ChannelMode flag);
 
     // TODO: i - toggle the invite - only channel                      flag;
     // 4.2.2 Invite Only Flag
@@ -222,7 +223,7 @@ class Channel {
     std::string _topic = "";
     std::string _invitationMask = "";
     uint32_t    _userLimit = UINT32_MAX;
-    uint16_t    _channelFlags = 0;
+    uint16_t    _channelModes = 0;
 
     std::unordered_map<std::string, std::unique_ptr<Channel::User>> _users;
 
@@ -251,6 +252,13 @@ class Channel {
      * @param userToSkip User not to be included in the list.
      */
     std::string userList(const User &userToSkip) const;
+
+    /**
+     * @brief Toggles a mode on the channel.
+     *
+     * @param mode Channel::ChannelMode to be toggled.
+     */
+    void toggleMode(const ChannelMode mode);
 
   public:
     class User {
@@ -293,7 +301,7 @@ class Channel {
         bool          _isOperator = false;
     };
 
-    enum class ChannelFlag : uint16_t {
+    enum class ChannelMode : uint16_t {
       INVITE_ONLY = 1,
       TOPIC_SET_BY_CHANOP_ONLY = 1 << 1,
       KEY_PROTECTED = 1 << 2,
