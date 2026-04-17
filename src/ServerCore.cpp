@@ -174,7 +174,9 @@ void Server::run(void) {
       }
     }
     if (now - _lastPingCheck > std::chrono::seconds(5)) {
+      LOG << "Checking for inactive clients";
       pingInactiveClients(now);
+      _lastPingCheck = now;
     }
   }
 }
@@ -252,22 +254,27 @@ void Server::startDisconnect(int32_t fd, std::string reason,
                              bool socketExists) {
   Client                  &removed = _clients.at(fd);
   std::vector<std::string> channels = removed.getChannels();
-  std::string quitMsq = removed.generatePrefix() + " QUIT :Quit :" + reason;
+  std::string quitMsg = removed.generatePrefix() + " QUIT :Quit :" + reason;
   for (auto channelName : channels) {
     OptionalChannel chan = findChannel(channelName);
     if (chan.has_value()) {
-      chan->get().messageAllUsersOnChannel(removed.getNickname(), quitMsq);
+      chan->get().messageAllUsersOnChannel(removed.getNickname(), quitMsg);
       OptionalUser user = chan->get().findUser(removed.getNickname());
       if (user.has_value())
         chan->get().kickUser(*user);
     }
   }
   _nickToFd.erase(removed.getNickname());
-  removed.setShouldClose(true);
-  modifyEpoll(fd, EPOLLOUT | EPOLLHUP | EPOLLERR);
-  if (!socketExists) {
+
+  if (socketExists) {
+    std::string errorMsg =
+        "ERROR :Closing Link: " + removed.getHostname() + " (" + quitMsg + ")";
+    replyMessage(fd, errorMsg);
+  } else {
     removed.clearResponseBuffer();
   }
+  removed.setShouldClose(true);
+  modifyEpoll(fd, EPOLLOUT | EPOLLHUP | EPOLLERR);
 }
 
 void Server::pingInactiveClients(TimeStamp now) {
@@ -276,6 +283,7 @@ void Server::pingInactiveClients(TimeStamp now) {
       continue;
     }
     if (now - client.getLastMsgRecv() > std::chrono::seconds(CLIENT_TIMEOUT)) {
+      LOG << "Starting timeout kick for client " << fd;
       startDisconnect(fd, "Client timed out", true);
       continue;
     }

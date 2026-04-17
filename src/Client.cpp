@@ -91,7 +91,6 @@ void Client::readSocket() {
 std::string Client::extractMessage() {
   auto stoppingPoint = _recvBuffer.find("\r\n");
   if (stoppingPoint != std::string::npos) {
-    _lastMsgRecv = std::chrono::system_clock::now();
     std::string msg = _recvBuffer.substr(0, stoppingPoint);
     _recvBuffer.erase(0, stoppingPoint + 2);
     return msg;
@@ -193,7 +192,7 @@ TimeStamp Client::getLastPingSent() {
 }
 
 TimeStamp Client::getLastMsgRecv() {
-  return _lastPingSent;
+  return _lastMsgRecv;
 }
 
 void Client::setPingSent(TimeStamp t) {

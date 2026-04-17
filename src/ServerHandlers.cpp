@@ -355,10 +355,6 @@ void Server::handleQuit(int fd, const Command &cmd) {
   if (!cmd.params.empty()) {
     quitMsg = cmd.params[0];
   }
-  Client     &client = _clients.at(fd);
-  std::string errorMsg =
-      "ERROR :Closing Link: " + client.getHostname() + " (" + quitMsg + ")";
-  replyMessage(fd, errorMsg);
   startDisconnect(fd, quitMsg, true);
   LOG << "Client " << fd << " initiated QUIT sequence.";
 }
