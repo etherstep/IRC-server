@@ -48,6 +48,8 @@ std::string &Channel::getNewModes() {
 
 void Channel::setNewModes(const std::string &modes) {
   _newModes = modes;
+}
+
 const std::string &Channel::getUNIXTimeCreated(void) const {
   return (_timeCreated);
 }
