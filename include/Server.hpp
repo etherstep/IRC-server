@@ -19,6 +19,7 @@
 #include "Channel.hpp"
 #include "Client.hpp"
 #include "Command.hpp"
+#include "Parser.hpp"
 #include "Socket.hpp"
 
 #define BACKLOG_SIZE 1024
@@ -32,6 +33,11 @@
 
 class Client;
 class Channel;
+
+namespace Parser {
+void channelModeParse(const Command &cmd, Channel &channel, Server &server,
+                      int32_t fd);
+}
 
 using OptionalClient = std::optional<std::reference_wrapper<Client>>;
 using OptionalChannel = std::optional<std::reference_wrapper<Channel>>;
@@ -53,6 +59,9 @@ class Server {
 
     // INFO: Signal handling
     static volatile sig_atomic_t _sigintReceived;
+
+    friend void Parser::channelModeParse(const Command &cmd, Channel &channel,
+                                         Server &server, int32_t fd);
 
     /**
      * @brief map of Client classes, each has its own Socket class
@@ -154,11 +163,6 @@ class Server {
      * @return int32_t _serverfd
      */
     int32_t getServerFd(void) const;
-
-    /**
-     * @brief Returns a reference to the vector of client side FD's
-     */
-    std::vector<int32_t> &getClients(void) const;
 
     OptionalClient findClientByName(const std::string &name);
     /**
