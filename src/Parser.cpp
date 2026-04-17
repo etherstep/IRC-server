@@ -60,9 +60,13 @@ int32_t Parser::channelModeParse(const Command &cmd, Channel &channel) {
           break;
 
         OptionalUser user = channel.findUser(cmd.params[index++]);
-        // FIXME: handle missing user some way?
-        if (!user)
-          break;
+        if (!user) {
+          server.sendMessageWithCodeToUser(authorNick, authorNick,
+                                           Numeric::ERR_NOSUCHNICK,
+                                           ":" + cmd.params[--index]);
+          index++;
+          continue;
+        }
 
         user->get().toggleOperatorPrivilege();
         append('o');
