@@ -158,11 +158,6 @@ class Server {
      */
     int32_t getServerFd(void) const;
 
-    /**
-     * @brief Returns a reference to the vector of client side FD's
-     */
-    std::vector<int32_t> &getClients(void) const;
-
     OptionalClient findClientByName(const std::string &name);
     /**
      * @brief remove client and socket from the maps
