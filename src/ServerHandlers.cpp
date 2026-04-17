@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <span>
@@ -405,9 +406,10 @@ void Server::handleQuit(int fd, const Command &cmd) {
     quitMsg = cmd.params[0];
   }
   Client     &client = _clients.at(fd);
-  std::string errorMsg = "ERROR :Closing Link: (Quit: " + quitMsg + ")";
+  std::string errorMsg =
+      "ERROR :Closing Link: " + client.getHostname() + " (" + quitMsg + ")";
   replyMessage(fd, errorMsg);
-  client.setShouldClose(true);
+  startDisconnect(fd, quitMsg, true);
   LOG << "Client " << fd << " initiated QUIT sequence.";
 }
 
@@ -431,6 +433,9 @@ void Server::handleMode(int32_t fd, const Command &cmd) {
 
   if (cmd.params.size() < 1) {
     replyNumeric(fd, Numeric::ERR_NEEDMOREPARAMS, ":Not enough parameters");
+    return;
+  }
+  if (cmd.params[0][0] != '#' && cmd.params[0][0] != '&') {
     return;
   }
   OptionalChannel channel = findChannel(cmd.params[0]);

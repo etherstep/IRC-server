@@ -1,9 +1,11 @@
 #pragma once
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 
 #include "Client.hpp"
@@ -39,6 +41,17 @@ class Channel {
 
     std::string &getNewModes();
     void         setNewModes(const std::string &modes);
+    /**
+     * @brief Returns a string containing the active modes and their
+     * corresponding mode arguments.
+     */
+    std::string getModes(void) const;
+
+    /**
+     * @brief Returns a UNIX time stamp of the time when channel was created.
+     */
+    const std::string &getUNIXTimeCreated(void) const;
+
     /**
      * @brief Sets the channel key.
      *
@@ -139,7 +152,7 @@ class Channel {
      * @param flag Channel::ChannelFlag to be checked.
      * @return Returns true if given flag is on. Otherwise return false.
      */
-    bool isModeOn(const ChannelMode flag);
+    bool isModeOn(const ChannelMode flag) const;
 
     // TODO: i - toggle the invite - only channel                      flag;
     // 4.2.2 Invite Only Flag
@@ -224,6 +237,7 @@ class Channel {
     std::string _key = "";
     std::string _topic = "";
     std::string _invitationMask = "";
+    std::string _timeCreated = "";
     uint32_t    _userLimit = UINT32_MAX;
     uint16_t    _channelModes = 0;
     std::string _newModes = "";
