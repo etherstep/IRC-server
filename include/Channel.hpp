@@ -7,6 +7,7 @@
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <vector>
 
 #include "Client.hpp"
 #include "Server.hpp"
@@ -176,6 +177,15 @@ class Channel {
     }
 
     /**
+     * @brief Tries to add <invited> to the invite list of the channel.
+     *
+     * @param sender Nickname of the invitation sender.
+     * @param invited Nickname of the client to be invited.
+     * @return Returns true if succesful. Otherwise false.
+     */
+    bool tryAddInvite(const User &sender, const std::string &invited);
+
+    /**
      * @brief Send a <message> to all Users on channel.
      *
      * @param message Message to be sent to all users.
@@ -221,15 +231,16 @@ class Channel {
     bool keyIsCorrect(const std::string &key) const;
 
   private:
-    Server     &_server;
-    std::string _name = "";
-    std::string _key = "";
-    std::string _topic = "";
-    std::string _invitationMask = "";
-    std::string _timeCreated = "";
-    uint32_t    _userLimit = UINT32_MAX;
-    uint16_t    _channelModes = 0;
-    std::string _newModes = "";
+    Server                  &_server;
+    std::string              _name = "";
+    std::string              _key = "";
+    std::string              _topic = "";
+    std::string              _invitationMask = "";
+    std::string              _timeCreated = "";
+    uint32_t                 _userLimit = UINT32_MAX;
+    uint16_t                 _channelModes = 0;
+    std::string              _newModes = "";
+    std::vector<std::string> _inviteList{};
 
     std::unordered_map<std::string, std::unique_ptr<Channel::User>> _users;
 

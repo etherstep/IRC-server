@@ -1,5 +1,6 @@
 #include "Channel.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -102,6 +103,21 @@ unsigned int Channel::getUserCount(void) const {
 // INFO: Utilities:
 std::optional<std::reference_wrapper<Channel::User>> Channel::tryAddUser(
     const Client &client, const std::string &key) {
+  if (isModeOn(ChannelMode::INVITE_ONLY)) {
+    auto it =
+        std::find(_inviteList.begin(), _inviteList.end(), client.getNickname());
+    if (it == _inviteList.end()) {
+      _server.sendMessageWithCodeToUser(
+          client.getNickname(), client.getNickname(),
+          Numeric::ERR_INVITEONLYCHAN,
+          this->getName() + " :Cannot join channel (+i)");
+      LOG << client.getNickname() + " can't join channel " + this->getName() +
+                 " because it's invite only\n";
+      return (std::nullopt);
+    } else {
+      _inviteList.erase(it);
+    }
+  }
   if (isModeOn(ChannelMode::KEY_PROTECTED)) {
     if (key != _key) {
       _server.sendMessageWithCodeToUser(
@@ -132,6 +148,35 @@ std::optional<std::reference_wrapper<Channel::User>> Channel::tryAddUser(
     return (std::nullopt);
   }
   return (addUser(client));
+}
+
+bool Channel::tryAddInvite(const User &senderUser, const std::string &invited) {
+  std::string sender = senderUser.getNickName();
+  if (isModeOn(Channel::ChannelMode::INVITE_ONLY)) {
+    if (senderUser.isOperator() == false) {
+      _server.sendMessageWithCodeToUser(sender, sender,
+                                        Numeric::ERR_CHANOPRIVSNEEDED,
+                                        "You're not channel operator");
+      return (false);
+    }
+  }
+  auto it = std::find(_inviteList.begin(), _inviteList.end(), invited);
+  if (it != _inviteList.end()) {
+    OptionalClient client = _server.findClientByName(senderUser.getNickName());
+    if (client) {
+      _server.sendMessageWithCodeToUser(
+          client->get().getNickname(), client->get().getNickname(),
+          Numeric::ERR_USERONCHANNEL,
+          client->get().getNickname() + " " + this->getName() +
+              " :is already on channel");
+      return (false);
+    } else {
+      return (false);
+    }
+  } else {
+    _inviteList.push_back(invited);
+    return (true);
+  }
 }
 
 std::optional<std::reference_wrapper<Channel::User>> Channel::addUser(

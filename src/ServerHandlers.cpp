@@ -177,22 +177,12 @@ void Server::handleInvite(int32_t fd, const Command &cmd) {
     return;
   }
 
-  if (channel->get().isModeOn(Channel::ChannelMode::INVITE_ONLY)) {
-    if (!senderUser->get().isOperator()) {
-      replyNumeric(fd, Numeric::ERR_CHANOPRIVSNEEDED,
-                   "You're not channel operator");
-      return;
-    }
-  }
-
   const std::string &targetNick = cmd.params[0];
   const std::string &channelName = channel->get().getName();
-  if (channel->get().findUser(targetNick)) {
-    replyNumeric(fd, Numeric::ERR_USERONCHANNEL,
-                 targetNick + " " + channelName + " :is already on channel");
+
+  if (channel->get().tryAddInvite(senderUser->get(), targetNick) == false) {
     return;
   }
-
   const std::string &messageToSender = targetNick + " :" + channelName;
   replyNumeric(fd, Numeric::RPL_INVITING, messageToSender);
 

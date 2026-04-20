@@ -41,6 +41,7 @@ constexpr int32_t ERR_ALREADYREGISTRED = 462;
 constexpr int32_t ERR_PASSWDMISMATCH = 464;
 constexpr int32_t ERR_CHANNELISFULL = 471;
 constexpr int32_t ERR_UNKNOWNMODE = 472;
+constexpr int32_t ERR_INVITEONLYCHAN = 473;
 constexpr int32_t ERR_BADCHANNELKEY = 475;
 constexpr int32_t ERR_BADCHANMASK = 476;
 constexpr int32_t ERR_CHANOPRIVSNEEDED = 482;
