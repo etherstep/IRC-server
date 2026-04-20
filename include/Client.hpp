@@ -15,7 +15,7 @@
 #define MAX_SEND_BUFFER 1048576
 #define MAX_MESSAGE_LEN 510
 
-using TimeStamp = std::chrono::time_point<std::chrono::system_clock>;
+using TimeStamp = std::chrono::time_point<std::chrono::steady_clock>;
 
 class Client {
   public:

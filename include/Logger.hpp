@@ -1,8 +1,13 @@
 #pragma once
+#include <chrono>
 #include <fstream>
-#include <mutex>
 #include <sstream>
 #include <string>
+
+using TimeStamp = std::chrono::time_point<std::chrono::steady_clock>;
+
+constexpr size_t logBufferSize = 1024 * 1024;
+constexpr size_t diskCheckInterval = 5;
 
 class Logger {
   public:
@@ -11,20 +16,31 @@ class Logger {
 
     template <typename T>
     Logger &operator<<(const T &msg) {
-      oss_ << msg;
+      _oss << msg;
       return *this;
     }
     static void setLogFile(const std::string &filename);
 
   private:
-    std::ostringstream oss_;
-    const char        *file_;
-    int                line_;
+    std::ostringstream _oss;
+    const char        *_file;
+    int                _line;
 
-    static std::mutex    logMutex;
-    static std::ofstream logFile;
+    static std::ofstream _logFile;
+    static std::string   _logPath;
+    static TimeStamp     _lastCheck;
+    static bool          _hasSpace;
 
     std::string getTimestamp();
+
+    /**
+     * @brief Checks if there is sufficient disk space: the length of the
+     * message + logBufferSize (1MB)
+     *
+     * @param line The string to be logged
+     * @return bool
+     */
+    static bool hasDiskSpace(const std::string &line);
 };
 
 #define LOG Logger(__FILE__, __LINE__)

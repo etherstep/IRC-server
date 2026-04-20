@@ -22,8 +22,8 @@ Client::Client(struct sockaddr_in *addr)
       _shouldClose(false),
       _waitingForPong(false),
       _state(State::CONNECTED),
-      _lastMsgRecv(std::chrono::system_clock::now()),
-      _lastPingSent(std::chrono::system_clock::now()) {
+      _lastMsgRecv(std::chrono::steady_clock::now()),
+      _lastPingSent(std::chrono::steady_clock::now()) {
   char ip[INET_ADDRSTRLEN] = {};
   if (inet_ntop(AF_INET, &(addr->sin_addr), ip, sizeof(ip))) {
     _hostname = ip;
