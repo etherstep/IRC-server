@@ -152,6 +152,13 @@ bool Channel::tryAddInvite(const User &senderUser, const std::string &invited) {
                                       "You're not channel operator");
     return (false);
   }
+  OptionalClient invitedClient = _server.findClientByName(invited);
+  if (!invitedClient) {
+    _server.sendMessageWithCodeToUser(
+        sender, sender, Numeric::ERR_NOSUCHNICK,
+        invited + " " + sender + " :No such nick");
+    return (false);
+  }
   auto userIt = _users.find(invited);
   if (userIt != _users.end()) {
     _server.sendMessageWithCodeToUser(
