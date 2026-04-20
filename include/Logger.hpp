@@ -1,6 +1,6 @@
 #pragma once
+#include <chrono>
 #include <fstream>
-#include <mutex>
 #include <sstream>
 #include <string>
 
@@ -16,21 +16,20 @@ class Logger {
 
     template <typename T>
     Logger &operator<<(const T &msg) {
-      oss_ << msg;
+      _oss << msg;
       return *this;
     }
     static void setLogFile(const std::string &filename);
 
   private:
-    std::ostringstream oss_;
-    const char        *file_;
-    int                line_;
+    std::ostringstream _oss;
+    const char        *_file;
+    int                _line;
 
-    static std::mutex    logMutex_;
-    static std::ofstream logFile_;
-    static std::string   logPath_;
-    static TimeStamp     lastCheck_;
-    static bool          hasSpace_;
+    static std::ofstream _logFile;
+    static std::string   _logPath;
+    static TimeStamp     _lastCheck;
+    static bool          _hasSpace;
 
     std::string getTimestamp();
 
