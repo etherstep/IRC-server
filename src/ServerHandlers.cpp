@@ -443,7 +443,9 @@ void Server::handleMode(int32_t fd, const Command &cmd) {
   }
   OptionalChannel channel = findChannel(cmd.params[0]);
   if (!channel) {
-    replyNumeric(fd, Numeric::ERR_NOSUCHCHANNEL, ":No such channel");
+    std::string errStr =
+        cmd.params[0] + " " + client.getNickname() + " :No such channel";
+    replyNumeric(fd, Numeric::ERR_NOSUCHCHANNEL, errStr);
     return;
   }
 
