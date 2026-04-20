@@ -1,6 +1,7 @@
 #include <assert.h>
 
 #include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <span>
@@ -209,6 +210,17 @@ void Server::handlePart(int32_t fd, const Command &cmd) {
   }
   // FIXME: ^^ Throw here only for development/debugging purposes ^^
 
+  auto it = _clients.find(fd);
+  if (it == _clients.end()) {
+    return;
+  }
+  OptionalClient client = it->second;
+  if (!client.has_value()) {
+    return;
+  }
+
+  const std::string &clientNickname = client->get().getNickname();
+
   std::vector<OptionalChannel> channels;
   std::string                  reason;
   for (size_t i = 0; i < cmd.params.size(); ++i) {
@@ -219,7 +231,9 @@ void Server::handlePart(int32_t fd, const Command &cmd) {
         while (std::getline(channelStream, channelName, ',')) {
           OptionalChannel optChannel = findChannel(channelName);
           if (!optChannel.has_value()) {
-            replyNumeric(fd, Numeric::ERR_NOSUCHCHANNEL, ":No such channel");
+            std::string errStr =
+                cmd.params[0] + " " + clientNickname + " :No such channel";
+            replyNumeric(fd, Numeric::ERR_NOSUCHCHANNEL, errStr);
             continue;
           }
           channels.push_back(optChannel);
@@ -235,17 +249,9 @@ void Server::handlePart(int32_t fd, const Command &cmd) {
   if (channels.size() == 0) {
     return;
   }
-  auto it = _clients.find(fd);
-  if (it == _clients.end()) {
-    return;
-  }
-  OptionalClient client = it->second;
-  if (!client.has_value()) {
-    return;
-  }
   std::string prefix = client->get().generatePrefix();
   for (auto &channel : channels) {
-    OptionalUser optUser = channel->get().findUser(client->get().getNickname());
+    OptionalUser optUser = channel->get().findUser(clientNickname);
     if (!optUser.has_value()) {
       replyNumeric(fd, Numeric::ERR_NOTONCHANNEL,
                    ":You're not on that channel");
@@ -260,7 +266,7 @@ void Server::handlePart(int32_t fd, const Command &cmd) {
     }
     channel->get().messageAllUsersOnChannel(partMessage);
     client->get().removeChannel(channelName);
-    channel->get().removeUser(client->get().getNickname());
+    channel->get().removeUser(clientNickname);
   }
 }
 
@@ -439,11 +445,19 @@ void Server::handleMode(int32_t fd, const Command &cmd) {
     return;
   }
   if (cmd.params[0][0] != '#' && cmd.params[0][0] != '&') {
+    auto targetFd = _nickToFd.find(cmd.params[0]);
+    if (targetFd != _nickToFd.end())
+      return;
+    std::string errStr =
+        cmd.params[0] + " " + client.getNickname() + " :No such channel";
+    replyNumeric(fd, Numeric::ERR_NOSUCHCHANNEL, errStr);
     return;
   }
   OptionalChannel channel = findChannel(cmd.params[0]);
   if (!channel) {
-    replyNumeric(fd, Numeric::ERR_NOSUCHCHANNEL, ":No such channel");
+    std::string errStr =
+        cmd.params[0] + " " + client.getNickname() + " :No such channel";
+    replyNumeric(fd, Numeric::ERR_NOSUCHCHANNEL, errStr);
     return;
   }
 
