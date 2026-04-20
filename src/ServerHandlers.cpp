@@ -449,7 +449,7 @@ void Server::handleMode(int32_t fd, const Command &cmd) {
     if (targetFd != _nickToFd.end())
       return;
     std::string errStr =
-        cmd.params[0] + " " + client.getNickname() + " :No such nick/channel";
+        cmd.params[0] + " " + client.getNickname() + " :No such channel";
     replyNumeric(fd, Numeric::ERR_NOSUCHCHANNEL, errStr);
     return;
   }
