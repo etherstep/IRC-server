@@ -41,7 +41,7 @@ void channelModeParse(const Command &cmd, Channel &channel, Server &server,
 
 using OptionalClient = std::optional<std::reference_wrapper<Client>>;
 using OptionalChannel = std::optional<std::reference_wrapper<Channel>>;
-using TimeStamp = std::chrono::time_point<std::chrono::system_clock>;
+using TimeStamp = std::chrono::time_point<std::chrono::steady_clock>;
 
 class Server {
   private:

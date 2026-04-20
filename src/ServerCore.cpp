@@ -27,7 +27,7 @@ Server::Server(const int32_t port, const uint32_t backlogSize,
     : _listenSocket(Socket::makeListeningSocket(port)),
       _port(port),
       _backlogSize(backlogSize),
-      _lastPingCheck(std::chrono::system_clock::now()),
+      _lastPingCheck(std::chrono::steady_clock::now()),
       _pwd(pwd) {
   int sendBufSize = SNDBUF_SIZE;
   int receiveBufSize = RCVBUF_SIZE;
@@ -72,7 +72,7 @@ void Server::run(void) {
   while (_sigintReceived == false) {
     // LOG << "Polling for new connections. Clients: ";
     // LOG << _clients.size();
-    TimeStamp now = std::chrono::system_clock::now();
+    TimeStamp now = std::chrono::steady_clock::now();
     _nEpollFDs = epoll_wait(_epollFD, _epollEvents, _backlogSize, POLL_TIME);
     for (int i = 0; i < _nEpollFDs; ++i) {
       // check for disconnected clients and remove them from the map
@@ -88,8 +88,8 @@ void Server::run(void) {
           // errno is EAGAIN or EWOULDBLOCK
           struct sockaddr_in client_addr;
           socklen_t          addr_len = sizeof(client_addr);
-          int32_t            clientFD = accept(_listenSocket.getFD(),
-                                               (struct sockaddr *)&client_addr, &addr_len);
+          int32_t clientFD = accept(_listenSocket.getFD(),
+                                    (struct sockaddr *)&client_addr, &addr_len);
           if (clientFD == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
               break;
@@ -192,7 +192,7 @@ void Server::processMessage(int32_t fd, std::optional<Command> const &cmd) {
   if (cmd.has_value()) {
     auto it = _functionMap.find(cmd->command);
     if (it != _functionMap.end()) {
-      client.setLastMsgRecv(std::chrono::system_clock::now());
+      client.setLastMsgRecv(std::chrono::steady_clock::now());
       auto handler = it->second;
       (this->*handler)(fd, *cmd);
     } else {

@@ -4,6 +4,11 @@
 #include <sstream>
 #include <string>
 
+using TimeStamp = std::chrono::time_point<std::chrono::steady_clock>;
+
+constexpr size_t logBufferSize = 1024 * 1024;
+constexpr size_t diskCheckInterval = 5;
+
 class Logger {
   public:
     Logger(const char *file, int line);
@@ -21,10 +26,22 @@ class Logger {
     const char        *file_;
     int                line_;
 
-    static std::mutex    logMutex;
-    static std::ofstream logFile;
+    static std::mutex    logMutex_;
+    static std::ofstream logFile_;
+    static std::string   logPath_;
+    static TimeStamp     lastCheck_;
+    static bool          hasSpace_;
 
     std::string getTimestamp();
+
+    /**
+     * @brief Checks if there is sufficient disk space: the length of the
+     * message + logBufferSize (1MB)
+     *
+     * @param line The string to be logged
+     * @return bool
+     */
+    static bool hasDiskSpace(const std::string &line);
 };
 
 #define LOG Logger(__FILE__, __LINE__)
