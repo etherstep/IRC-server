@@ -190,6 +190,15 @@ class Channel {
     void messageAllUsersOnChannel(const std::string &message);
 
     /**
+     * @brief Send a <message> to all Users on channel.
+     *
+     * @param message Message to be sent to all users.
+     * @param sender Sender of <message> to be ignored.
+     */
+    void messageAllExceptSenderOnChannel(const std::string &message,
+                                         const std::string &sender);
+
+    /**
      * @brief Send a <message> with <code> to all users on channel.
      *
      * @param message Message to be sent to all users.
@@ -316,34 +325,3 @@ class Channel {
 };
 
 using OptionalUser = std::optional<std::reference_wrapper<Channel::User>>;
-
-// WARN: Not in subject:
-// enum class ChannelFlag{
-//  ANONYMOUS = 1 << 4,
-//  MODERATED = 1 << 5,
-//  NO_MESSAGES_FROM_OUTSIDE = 1 << 6,
-//  QUIET_CHANNEL = 1 << 7,
-//  PRIVATE_CHANNEL = 1 << 8,
-//  SECRET_CHANNEL = 1 << 9,
-//  SERVER_REOP_CHANNEL = 1 << 10,
-// };
-
-// WARN: Nickname masks not in subject
-// std::string _banMask = "";
-// std::string _banExceptionMask = "";
-
-/* WARN: Not defined in subject
- * a - toggle the anonymous channel flag;
- * m - toggle the moderated channel;
- * n - toggle the no messages to channel from clients on the outside;
- * q - toggle the quiet channel flag;
- * p - toggle the private channel flag;
- * s - toggle the secret channel flag;
- * r - toggle the server reop channel flag;
- * O - give "channel creator" status;
- * v - give / take the voice privilege;
- * b - set / remove ban mask to keep users out;
- * e - set / remove an exception mask to override a ban mask;
- * I - set / remove an invitation mask to automatically override the
- * invite-only flag; };
- */

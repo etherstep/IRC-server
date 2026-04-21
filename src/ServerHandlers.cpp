@@ -1,9 +1,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
+#include <set>
 #include <span>
 #include <sstream>
 #include <stdexcept>
@@ -513,27 +515,46 @@ void Server::handleNickname(int32_t fd, const Command &cmd) {
   if (Utils::validateNickname(nickname)) {
     if (isNicknameInUse(nickname)) {
       replyNumeric(fd, Numeric::ERR_NICKNAMEINUSE, nickname);
-      if (client.getState() == Client::State::REGISTERED) {
-        std::cout << "here" << std::endl;
-        return;
-      } else {
-        while (isNicknameInUse(nickname)) {
-          nickname.append("_");
-        }
-        client.setNickname(cmd.params[0]);
-        replyMessage(fd, client.generatePrefix() + " NICK " + nickname);
-        return;
-      }
+      return;
     }
-    client.setNickname(nickname);
-    _nickToFd.try_emplace(client.getNickname(), fd);
-    client.setState(Client::State::NICK_RECEIVED);
-    replyMessage(fd, client.generatePrefix() + " NICK " + cmd.params[0]);
+    if (client.isRegistered()) {
+      std::string oldNick = client.getNickname();
+      std::string oldPrefix = client.generatePrefix();
+      client.setNickname(nickname);
+      handleChangedNick(fd, oldNick);
+      return;
+    } else {
+      client.setNickname(nickname);
+      _nickToFd.try_emplace(client.getNickname(), fd);
+      client.setState(Client::State::NICK_RECEIVED);
+      replyMessage(fd, client.generatePrefix() + " NICK " + cmd.params[0]);
+    }
     if (client.isRegistered() && state != client.getState()) {
       sendWelcomeMessages(fd);
     }
   } else {
     replyNumeric(fd, Numeric::ERR_ERRONEUSNICKNAME, ":Erroneous nickname");
     return;
+  }
+}
+
+// FIXME: Make set to a separate function and use this in QUIT too
+void Server::handleChangedNick(int32_t fd, const std::string &oldPrefix) {
+  Client           &client = _clients.at(fd);
+  std::string       nickname = client.getNickname();
+  std::set<int32_t> fds;
+  for (const auto &channelName : client.getChannels()) {
+    OptionalChannel channel = findChannel(channelName);
+    if (!channel) {
+      throw std::runtime_error("Channel " + channelName + " not existing");
+    } else {
+      const auto &users = channel->get().getUsers();
+      for (const auto &[userNick, ptr] : users) {
+        fds.insert(_nickToFd.at(userNick));
+      }
+    }
+  }
+  for (const auto userFd : fds) {
+    replyMessage(userFd, oldPrefix + " NICK " + nickname);
   }
 }
