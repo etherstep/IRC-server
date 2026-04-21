@@ -38,6 +38,10 @@ Server::Server(const int32_t port, const uint32_t backlogSize,
       _backlogSize(backlogSize),
       _lastPingCheck(std::chrono::steady_clock::now()),
       _pwd(pwd) {
+  if (_pwd.empty()) {
+    LOG << "Warning: empty password";
+    _noPassword = true;
+  }
   int sendBufSize = SNDBUF_SIZE;
   int receiveBufSize = RCVBUF_SIZE;
 

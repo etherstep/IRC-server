@@ -42,7 +42,7 @@ void Server::handleCapNegotiation(int32_t fd, const Command &cmd) {
 void Server::handleUserJoin(int32_t fd, const Command &cmd) {
   LOG << "handling USER command";
   Client &client = _clients.at(fd);
-  if (!client.isPasswordOK()) {
+  if (!_noPassword && !client.isPasswordOK()) {
     replyNumeric(fd, Numeric::ERR_PASSWDMISMATCH, ":Incorrect password");
     return;
   }
@@ -77,7 +77,7 @@ void Server::handleUserJoin(int32_t fd, const Command &cmd) {
 void Server::handleNickname(int32_t fd, const Command &cmd) {
   LOG << "handling NICK command";
   Client &client = _clients.at(fd);
-  if (!client.isPasswordOK()) {
+  if (!_noPassword && !client.isPasswordOK()) {
     replyNumeric(fd, Numeric::ERR_PASSWDMISMATCH, ":Incorrect password");
     return;
   }
