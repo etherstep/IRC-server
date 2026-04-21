@@ -17,14 +17,16 @@ struct epoll_event ev, events[MAX_EVENTS];
 int                epollfd, nfds;
 
 int32_t validatePortValue(const char *port) {
-  int32_t portValue = 0;
-  auto [ptr, ec] = std::from_chars(port, port + strlen(port), portValue);
-  if (ec != std::errc{} || ptr != port + strlen(port) || portValue < 1024 ||
-      portValue > 65535) {
+  int32_t       val{};
+  const int32_t len = std::strlen(port);
+  auto [ptr, ec] = std::from_chars(port, port + len, val);
+  const bool not_all_digits = (ptr != port + len);
+  const bool out_of_range = (val < 1024) || (val > 65535);
+  if (ec != std::errc{} || not_all_digits || out_of_range) {
     std::cerr << "Invalid port range/value" << std::endl;
-    exit(1);
+    std::exit(EXIT_FAILURE);
   }
-  return portValue;
+  return val;
 }
 
 int main(int ac, char **av) {
