@@ -401,7 +401,7 @@ void Server::handleJoin(int32_t fd, const Command &cmd) {
       continue;
     } else {
       LOG << clientToAdd.getNickname() + " joining channel " + channelNames[i];
-      std::string  key = channelKeys.size() > 0 && i <= channelKeys.size()
+      std::string  key = channelKeys.size() > 0 && i < channelKeys.size()
                              ? channelKeys[i]
                              : "";
       OptionalUser user = channel->get().tryAddUser(clientToAdd, key);
