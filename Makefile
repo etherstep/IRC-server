@@ -93,7 +93,6 @@ $(shell rm -f $(LOCK_FILE))
 TOTAL_SRCS := $(shell $(MAKE) -n $(NAME) IS_DRY_RUN=1 2>/dev/null | grep -c "$(CXX).* -c")
 export TOTAL_SRCS
 endif
- 
 ifeq ($(TOTAL_SRCS),0)
 TOTAL_SRCS := 1
 endif
@@ -115,9 +114,6 @@ GIT_DATE			:= $(shell git show -s --format="%cd" \
 CXXFLAGS	+= -DGIT_HASH=\"$(GIT_HASH)\"
 
 SHELL		:= /bin/bash
-
-# Adds a buld fingerprint as a macro available in
-CXXFLAGS	+= -DGIT_HASH=\"$(GIT_HASH)\"
 
 # Displays an animated progress bar with spinner, percentage,
 # and current file name during build
