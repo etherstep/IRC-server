@@ -127,7 +127,7 @@ void Server::run(void) {
           auto clientIt = _clients.find(_epollEvents[i].data.fd);
           if (clientIt != _clients.end()) {
             clientIt->second.appendToRecvBuffer(buffer);
-            std::string command;
+            std::string command{};
             while (!(command = clientIt->second.extractMessage()).empty()) {
               if (command.length() > MAX_MESSAGE_LEN) {
                 replyNumeric(_epollEvents[i].data.fd, Numeric::ERR_INPUTTOOLONG,
