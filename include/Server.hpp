@@ -55,6 +55,7 @@ using TimeStamp = std::chrono::time_point<std::chrono::steady_clock>;
 
 class Server {
   private:
+    bool _noPassword = false;
     // INFO: Listening
     Socket    _listenSocket;
     int32_t   _port{};

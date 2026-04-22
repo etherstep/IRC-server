@@ -11,10 +11,6 @@
 #include "Server.hpp"
 #include "Utils.hpp"
 
-bool Server::passwordIsCorrect(const std::string &pwd) {
-  return (_pwd == pwd);
-}
-
 void Server::sendWelcomeMessages(int32_t fd) {
   Client     &client = _clients.at(fd);
   std::string clientMask = client.generatePrefix().substr(1);
@@ -23,7 +19,8 @@ void Server::sendWelcomeMessages(int32_t fd) {
   replyNumeric(fd, Numeric::RPL_YOURHOST,
                std::string(":Your host is ") + SERVER_NAME +
                    " running version " + GIT_HASH);
-  replyNumeric(fd, Numeric::RPL_CREATED, ":This Server was created today");
+  replyNumeric(fd, Numeric::RPL_CREATED,
+               ":This Server was created at " + Utils::getTimestamp());
   replyNumeric(fd, Numeric::RPL_MYINFO,
                std::string(SERVER_NAME) + " " + GIT_HASH + " i itkol");
 }
@@ -46,7 +43,7 @@ void Server::handleCapNegotiation(int32_t fd, const Command &cmd) {
 void Server::handleUserJoin(int32_t fd, const Command &cmd) {
   LOG << "handling USER command";
   Client &client = _clients.at(fd);
-  if (!client.isPasswordOK()) {
+  if (!_noPassword && !client.isPasswordOK()) {
     replyNumeric(fd, Numeric::ERR_PASSWDMISMATCH, ":Incorrect password");
     return;
   }
